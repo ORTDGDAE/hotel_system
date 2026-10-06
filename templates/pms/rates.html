@@ -1,0 +1,69 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}Rates & Rules{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div><h1>Rates & pricing rules</h1><div class="sub">Rack rates, seasonal ranges, weekend premiums and promotions</div></div>
+</div>
+
+<div class="grid mb-4" style="grid-template-columns:1.4fr 1fr;align-items:start">
+  <div class="card">
+    <div class="card-head"><h3>Room types</h3><a class="btn btn-ghost btn-sm" href="/admin/hotel/roomtype/">Edit in admin <i class="ri-arrow-right-line" aria-hidden="true"></i></a></div>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Type</th><th class="num">Rack rate</th><th>Capacity</th><th class="num">Inventory</th><th>Free cancel</th></tr></thead>
+      <tbody>
+      {% for rt in room_types %}
+        <tr><td><b>{{ rt.name }}</b><div class="tiny muted">{{ rt.get_bed_type_display }} · {{ rt.size_sqm }} m²</div></td>
+        <td class="num">{{ rt.base_price|money }}</td><td>{{ rt.max_guests }} guests</td>
+        <td class="num">{{ rt.total_rooms }}</td><td>{{ rt.cancellation_days }} days</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>Add pricing rule</h3></div>
+    <div class="card-pad">
+      <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="field"><label>{{ field.label }}</label>{{ field }}
+          {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}
+          {% for e in field.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}</div>
+        {% endfor %}
+        <button class="btn btn-gold" type="submit">Save rule</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>Active & scheduled rules</h3></div>
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Rule</th><th>Type</th><th>Scope</th><th>Period</th><th class="num">Multiplier</th><th class="num">Priority</th><th>Status</th><th class="right">Actions</th></tr></thead>
+    <tbody>
+    {% for r in rules %}
+      <tr>
+        <td><b>{{ r.name }}</b></td>
+        <td><span class="badge badge-{% if r.rule_type == 'seasonal' %}violet{% elif r.rule_type == 'weekend' %}info{% else %}success{% endif %} no-dot">{{ r.get_rule_type_display }}</span></td>
+        <td>{{ r.room_type.name|default:"All room types" }}</td>
+        <td class="nowrap">{{ r.start_date|date:"d M Y" }} <i class="ri-arrow-right-line" aria-hidden="true"></i> {{ r.end_date|date:"d M Y" }}</td>
+        <td class="num">×{{ r.multiplier }}</td>
+        <td class="num">{{ r.priority }}</td>
+        <td>{% if r.is_active %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-muted">Paused</span>{% endif %}</td>
+        <td class="right nowrap">
+          {% if user.is_group_manager_or_above or not active_property or r.property_id == active_property.pk %}
+            <form method="post" action="{% url 'pms:rate_rule_toggle' r.pk %}" style="display:inline">{% csrf_token %}
+              <button class="btn btn-outline btn-sm" type="submit">{% if r.is_active %}Pause{% else %}Activate{% endif %}</button></form>
+            <form method="post" action="{% url 'pms:rate_rule_delete' r.pk %}" style="display:inline" data-confirm="Delete rule “{{ r.name }}”?">{% csrf_token %}
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button></form>
+          {% else %}<span class="tiny muted">Inherited · group managed</span>{% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="8"><div class="empty-state"><div class="ic"><i class="ri-price-tag-3-line" aria-hidden="true"></i></div>No pricing rules yet — rack rates apply year-round.</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

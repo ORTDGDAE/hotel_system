@@ -1,0 +1,8 @@
+@echo off
+REM Copy this file to mysql.local.bat and replace the values below.
+REM mysql.local.bat is intentionally local-only; do not commit a real password.
+set "MYSQL_HOST=127.0.0.1"
+set "MYSQL_PORT=3306"
+set "MYSQL_DATABASE=aurelia"
+set "MYSQL_USER=root"
+set "MYSQL_PASSWORD=replace-with-your-mysql-password"

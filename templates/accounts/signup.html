@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Create account · {{ HOTEL_NAME }}{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <span class="auth-orb a1"></span>
+  <span class="auth-orb a2"></span>
+  <div class="auth-card" style="max-width:520px">
+    <h1>Create your account</h1>
+    <p class="muted mb-4">Book faster, manage your stays, unlock member rates.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="badge badge-danger mb-3">{{ form.non_field_errors.0 }}</div>{% endif %}
+      <div class="form-row">
+        <div class="field"><label>First name</label>{{ form.first_name }}{% for e in form.first_name.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}</div>
+        <div class="field"><label>Last name</label>{{ form.last_name }}{% for e in form.last_name.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}</div>
+      </div>
+      <div class="field"><label>Username</label>{{ form.username }}{% for e in form.username.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}</div>
+      <div class="field"><label>Email</label>{{ form.email }}{% for e in form.email.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}</div>
+      <div class="field"><label>Phone (optional)</label>{{ form.phone }}</div>
+      <div class="form-row">
+        <div class="field"><label>Password</label>{{ form.password1 }}{% for e in form.password1.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}</div>
+        <div class="field"><label>Confirm password</label>{{ form.password2 }}{% for e in form.password2.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}</div>
+      </div>
+      <div class="tiny muted" id="pwrules" style="margin:-4px 0 14px;display:grid;grid-template-columns:1fr 1fr;gap:3px 14px">
+        <span data-r="len"><i class="ri-checkbox-blank-circle-line" aria-hidden="true"></i> 8+ characters</span>
+        <span data-r="num"><i class="ri-checkbox-blank-circle-line" aria-hidden="true"></i> Not only numbers</span>
+        <span data-r="common"><i class="ri-checkbox-blank-circle-line" aria-hidden="true"></i> Not a common password</span>
+        <span data-r="user"><i class="ri-checkbox-blank-circle-line" aria-hidden="true"></i> Not your name / username</span>
+        <span data-r="match" style="grid-column:1/-1"><i class="ri-checkbox-blank-circle-line" aria-hidden="true"></i> Both passwords match</span>
+      </div>
+      <button class="btn btn-gold btn-lg btn-block" type="submit">Create account</button>
+    </form>
+    <p class="muted small mt-4 center">Already registered? <a href="{% url 'accounts:login' %}" style="color:var(--gold);font-weight:600">Sign in</a></p>
+  </div>
+</div>
+<script>
+(function () {
+  var p1 = document.getElementById('id_password1'), p2 = document.getElementById('id_password2');
+  if (!p1) return;
+  var COMMON = ['password', 'password1', 'p@ssw0rd', '123456', '1234567', '12345678', '123456789',
+    '12345', '1234567890', '000000', '111111', 'abc123', 'qwerty', 'iloveyou', 'admin',
+    'welcome', 'aurelia', 'aurelia2026', 'guest123', 'hotel123', 'cambodia', 'phnompenh'];
+  function rule(k, ok) {
+    var el = document.querySelector('#pwrules [data-r="' + k + '"]');
+    if (!el) return;
+    el.style.color = ok ? '#1e8e3e' : '';
+    el.style.fontWeight = ok ? '600' : '';
+    el.querySelector('i').className = ok ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line';
+  }
+  function val(id) { var e = document.getElementById(id); return e ? e.value.toLowerCase() : ''; }
+  function check() {
+    var v = p1.value, lv = v.toLowerCase();
+    var u = val('id_username'), f = val('id_first_name'), l = val('id_last_name');
+    rule('len', v.length >= 8);
+    rule('num', v.length > 0 && !/^\d+$/.test(v));
+    rule('common', v.length > 0 && COMMON.indexOf(lv) < 0 && !/^(.)\1+$/.test(v));
+    rule('user', v.length > 0 && (!u || lv.indexOf(u) < 0) && (!f || f.length < 3 || lv.indexOf(f) < 0) && (!l || l.length < 3 || lv.indexOf(l) < 0));
+    rule('match', v.length > 0 && v === p2.value);
+    return v.length >= 8 && !/^\d+$/.test(v) && COMMON.indexOf(lv) < 0;
+  }
+  ['id_password1', 'id_password2', 'id_username', 'id_first_name', 'id_last_name'].forEach(function (id) {
+    var e = document.getElementById(id);
+    if (e) e.addEventListener('input', check);
+  });
+  [p1, p2].forEach(function (inp) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.title = 'Show / hide password';
+    b.style.cssText = 'border:0;background:none;cursor:pointer;color:#8b95a9;margin-left:6px;vertical-align:middle';
+    b.innerHTML = '<i class="ri-eye-line" aria-hidden="true"></i>';
+    inp.parentNode.insertBefore(b, inp.nextSibling);
+    b.addEventListener('click', function () {
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+      b.querySelector('i').className = inp.type === 'password' ? 'ri-eye-line' : 'ri-eye-off-line';
+    });
+  });
+  document.querySelector('form').addEventListener('submit', function (ev) {
+    if (!check()) {
+      ev.preventDefault();
+      var box = document.getElementById('pwrules');
+      box.style.outline = '2px solid #d93025'; box.style.borderRadius = '10px'; box.style.padding = '9px 11px';
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+  check();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}Payments{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div><h1>Payments</h1><div class="sub">All charges and refunds across the property</div></div>
+</div>
+<div class="finance-explainer" role="note">
+  <i class="ri-information-line" aria-hidden="true"></i>
+  <span><b>Payment totals reflect the complete stay</b> — nights × rooms{% if service_percent %}, plus {{ service_percent }}% service and {{ tax_percent }}% tax{% else %}, plus {{ tax_percent }}% tax only{% endif %}. The lowest catalog rate is <b>{{ lowest_nightly_price|money }}/night</b>.</span>
+</div>
+<div class="kpi-grid mb-4" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi"><span class="kpi-accent green"></span><div class="kpi-label">Total charged (filtered)</div><div class="kpi-value">{{ total_charged|money }}</div></div>
+  <div class="kpi"><span class="kpi-accent red"></span><div class="kpi-label">Total refunded</div><div class="kpi-value">{{ total_refunded|money }}</div></div>
+  <div class="kpi"><span class="kpi-accent"></span><div class="kpi-label">Net collected</div><div class="kpi-value">{{ total_charged|add:total_refunded|money }}</div></div>
+</div>
+<form method="get" class="filter-bar">
+  <div class="field"><label>Method</label>
+    <select name="method" data-autosubmit><option value="">All methods</option>
+    {% for value, label in method_choices %}<option value="{{ value }}" {% if method == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+</form>
+<div class="card"><div class="table-wrap"><table class="data">
+  <thead><tr><th>When</th><th>Booking</th><th>Guest</th><th>Stay</th><th>Method</th><th>Note</th><th>By</th><th class="num">Payment total</th></tr></thead>
+  <tbody>
+  {% for p in payments %}
+    <tr>
+      <td class="nowrap tiny">{{ p.created_at|date:"d M Y H:i" }}</td>
+      <td class="mono"><a href="{{ p.booking.get_absolute_url }}">{{ p.booking.code }}</a></td>
+      <td>{{ p.booking.guest_name }}</td>
+      <td class="small nowrap">{{ p.booking.nights }} night{{ p.booking.nights|pluralize }} · {{ p.booking.rooms_count }} room{{ p.booking.rooms_count|pluralize }}</td>
+      <td><span class="badge badge-muted no-dot">{{ p.get_method_display }}</span></td>
+      <td class="small">{{ p.note|default:p.reference|default:"—" }}</td>
+      <td class="small">{{ p.created_by.get_full_name|default:"system" }}</td>
+      <td class="num" style="font-weight:700;color:{% if p.is_refund %}var(--red){% else %}var(--green){% endif %}">{% if p.is_refund %}−{% endif %}{{ p.amount|money }}</td>
+    </tr>
+  {% empty %}<tr><td colspan="8"><div class="empty-state"><div class="ic"><i class="ri-bank-card-line" aria-hidden="true"></i></div>No payments found.</div></td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% include "partials/pagination.html" %}
+{% endblock %}

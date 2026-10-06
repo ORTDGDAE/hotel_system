@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+{% block title %}Map · Aurelia Collection{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  #gmshell { --panel:#ffffff; --ink:#202124; --mut:#5f6368; --card:#ffffff; --line:#e4e2dc; --chip:#f1f3f4;
+    position:fixed; left:0; right:0; top:62px; bottom:0; display:flex; z-index:60;
+    background:#aadcff; font-family:system-ui,"Segoe UI",Roboto,sans-serif; }
+  #gmpanel { width:352px; background:var(--panel); color:var(--ink); display:flex; flex-direction:column;
+    border-right:1px solid var(--line); z-index:500; box-shadow:2px 0 10px rgba(0,0,0,.12); }
+  .gp-head { padding:14px 14px 10px; border-bottom:1px solid var(--line); }
+  .gp-title { font-weight:750; font-size:17px; display:flex; align-items:center; gap:8px; }
+  .gp-title .chip { background:var(--chip); color:var(--mut); font-size:11px; font-weight:600;
+    border-radius:999px; padding:2px 9px; }
+  .gp-search { margin-top:10px; display:flex; align-items:center; gap:8px; background:var(--chip);
+    border-radius:10px; padding:9px 12px; color:var(--mut); }
+  .gp-search input { border:0; outline:0; background:transparent; color:var(--ink); width:100%; font-size:14px; }
+  .gp-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .gp-chips button { border:1px solid var(--line); background:var(--panel); color:var(--mut);
+    border-radius:999px; padding:4px 11px; font-size:12px; cursor:pointer; }
+  .gp-chips button.on { background:#1a73e8; border-color:#1a73e8; color:#fff; font-weight:600; }
+  .gp-list { flex:1; overflow-y:auto; }
+  .gp-item { display:flex; gap:11px; padding:11px 14px; cursor:pointer; border-bottom:1px solid var(--line); }
+  .gp-item:hover { background:var(--chip); }
+  .gp-item img { width:86px; height:64px; object-fit:cover; border-radius:9px; flex-shrink:0; }
+  .gp-item b { font-size:14px; display:block; }
+  .gp-item .st { color:#fbbc04; font-size:11px; letter-spacing:1px; }
+  .gp-item .mut { color:var(--mut); font-size:12px; }
+  .gp-item .pr { margin-left:auto; font-weight:700; font-size:13px; white-space:nowrap; }
+  .gp-map { display:inline-flex; align-items:center; gap:4px; color:#1a73e8; font-size:11px; font-weight:650; margin-top:4px; }
+  .gp-map:hover { text-decoration:underline; }
+  .gp-foot { padding:8px 14px; font-size:11px; color:var(--mut); border-top:1px solid var(--line); }
+  #mapwrap { flex:1; position:relative; overflow:hidden; }
+  #realmap { position:absolute; inset:0; z-index:1; }
+  .gm-ctrl { position:absolute; right:12px; top:12px; display:flex; flex-direction:column; gap:8px; z-index:800; }
+  .gm-ctrl button { width:42px; height:42px; border:0; border-radius:10px; background:#fff; color:#202124;
+    font-size:18px; cursor:pointer; box-shadow:0 1px 5px rgba(0,0,0,.3); }
+  .gm-ctrl button:hover { background:var(--chip); }
+  .gm-hint { position:absolute; left:12px; top:12px; z-index:800; background:rgba(255,255,255,.92);
+    color:var(--mut); font-size:12px; border-radius:10px; padding:7px 12px; box-shadow:0 1px 5px rgba(0,0,0,.25); }
+  /* Google-style red teardrop pin */
+  .pin-div svg { filter:drop-shadow(0 2px 3px rgba(0,0,0,.4)); }
+  .clbadge { width:44px; height:44px; margin:0 auto; border-radius:50%; background:#ea4335; color:#fff;
+    border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.4); display:grid; place-items:center;
+    font:700 16px system-ui; }
+  .clcity { margin-top:3px; text-align:center; font:600 12px system-ui; color:#202124;
+    text-shadow:0 0 4px #fff,0 0 4px #fff,0 0 4px #fff; }
+  /* Google-style popup */
+  .leaflet-popup-content-wrapper { border-radius:14px; padding:0; overflow:hidden;
+    box-shadow:0 6px 26px rgba(0,0,0,.32); }
+  .leaflet-popup-content { margin:0; width:262px !important; font-family:system-ui,sans-serif; }
+  .iw img { width:100%; height:118px; object-fit:cover; display:block; }
+  .iw .bd { padding:11px 13px 13px; color:#202124; }
+  .iw b { font-size:15px; }
+  .iw .st { color:#fbbc04; font-size:11px; letter-spacing:1px; }
+  .iw p { color:#5f6368; font-size:12px; margin:5px 0 9px; }
+  .iw .row { display:flex; gap:7px; }
+  .iw .btnx { flex:1; text-align:center; border-radius:9px; padding:7px 0; font-size:12.5px; font-weight:600;
+    text-decoration:none; }
+  .iw .go { background:#1a73e8; color:#fff; }
+  .iw .gm { background:#f1f3f4; color:#202124; }
+  .leaflet-control-attribution { font-size:10.5px !important; }
+  /* ---- offline fallback (no network / sandboxed preview) ---- */
+  #fall { position:absolute; inset:0; z-index:2; background:#aadcff; }
+  #fall[hidden] { display:none; }
+  #fall svg { width:100%; height:100%; display:block; }
+  .landf { fill:#f6f4ee; stroke:#b6b0a2; stroke-width:1.6; stroke-dasharray:7 4; stroke-linejoin:round; }
+  .parkf { fill:#c9e5b8; opacity:.85; }
+  .lakef { fill:#aadcff; }
+  .riverl { fill:none; stroke:#7db9f0; stroke-width:3.2; stroke-linecap:round; }
+  .lblc { fill:#98937f; font-weight:600; letter-spacing:.22em; text-anchor:middle; }
+  .cl-c { fill:#ea4335; stroke:#fff; }
+  .cl-t { fill:#fff; font-weight:700; text-anchor:middle; }
+  .cty { fill:#202124; font-weight:600; text-anchor:middle; }
+  .pinp { fill:#ea4335; stroke:#a50e0e; }
+  .pinc { fill:#fff; }
+  .fbnote { position:absolute; left:50%; top:10px; transform:translateX(-50%); z-index:3;
+    background:rgba(32,33,36,.85); color:#fff; font-size:12px; border-radius:999px; padding:6px 14px; }
+  @media (max-width: 860px) { #gmpanel { display:none; } }
+</style>
+
+<div id="gmshell">
+  <aside id="gmpanel">
+    <div class="gp-head">
+      <div class="gp-title">Aurelia Collection <span class="chip">{{ total }} sanctuaries · Cambodia</span></div>
+      <div class="gp-search"><i class="ri-search-line" aria-hidden="true"></i>
+        <input id="q" type="search" placeholder="Search hotels or cities…" autocomplete="off"></div>
+      <div class="gp-chips" id="chips"></div>
+    </div>
+    <div class="gp-list" id="list"></div>
+    <div class="gp-foot"><i class="ri-map-pin-2-line" aria-hidden="true"></i> Key-free map preview · open any real location in Google Maps</div>
+  </aside>
+
+  <div id="mapwrap">
+    <div id="realmap"></div>
+    <div id="fall" hidden>
+      <div class="fbnote"><i class="ri-wifi-off-line" aria-hidden="true"></i> Offline preview — tap a location to open real Google Maps</div>
+      <svg id="fsvg" viewBox="0 0 1000 880" preserveAspectRatio="none">
+        <polygon class="landf" points="{{ geo.land }}"/>
+        <polygon class="parkf" points="{{ geo.cardamoms }}"/>
+        <polygon class="parkf" points="{{ geo.bokor }}"/>
+        <polyline class="riverl" points="{{ geo.mekong }}"/>
+        <polyline class="riverl" points="{{ geo.tonle_river }}"/>
+        <polygon class="lakef" points="{{ geo.lake }}"/>
+        {% for l in geo.labels %}
+        <text class="lblc" x="{{ l.x.0 }}" y="{{ l.x.1 }}" font-size="15">{{ l.t }}</text>
+        {% endfor %}
+        <g id="fpins"></g>
+      </svg>
+    </div>
+    <div class="gm-hint" id="hint"><i class="ri-drag-move-line" aria-hidden="true"></i> Drag · scroll to zoom · tap a red pin or cluster</div>
+    <div class="gm-ctrl">
+      <button id="bstyle" title="Switch map style"><i class="ri-earth-line" aria-hidden="true"></i></button>
+      <button id="breset" title="Reset view"><i class="ri-compass-3-line" aria-hidden="true"></i></button>
+      <button id="bfull" title="Fullscreen"><i class="ri-fullscreen-line" aria-hidden="true"></i></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  var PROPS = {{ props_json|safe }};
+  var city = 'All', query = '';
+  function visible(p) {
+    return (!query || (p.name + ' ' + p.city).toLowerCase().indexOf(query) >= 0) &&
+           (city === 'All' || p.city === city);
+  }
+  function stars(n) { return '★★★★★'.slice(0, n); }
+  function iwHTML(p) {
+    return '<div class="iw"><img src="' + p.img + '" alt="' + p.name + '"><div class="bd"><b>' + p.name +
+      '</b> <span class="st">' + stars(p.stars) + '</span><p>' + p.tagline +
+      '<br><span style="color:#1a73e8;font-weight:700">from $' + Math.round(p.price) + '</span> · ' + p.city +
+      '</p><div class="row"><a class="btnx go" href="/rooms/?property=' + p.slug + '">Rooms &amp; rates</a>' +
+      '<a class="btnx gm" href="' + p.maps + '" target="_blank" rel="noopener">Google Maps</a></div></div></div>';
+  }
+
+  /* ================= shared panel ================= */
+  var list = document.getElementById('list'), chips = document.getElementById('chips'),
+      q = document.getElementById('q'), E = null;
+  function renderList() {
+    list.innerHTML = PROPS.filter(visible).map(function (p) {
+      return '<div class="gp-item" data-slug="' + p.slug + '"><img src="' + p.img + '" alt=""><div style="min-width:0"><b>' +
+        p.name + '</b><span class="st">' + stars(p.stars) + '</span><div class="mut">' + p.city +
+        '</div><a class="gp-map" href="' + p.maps + '" target="_blank" rel="noopener"><i class="ri-map-2-line"></i> Open in Google Maps</a></div><span class="pr">$' + Math.round(p.price) + '</span></div>';
+    }).join('') || '<div style="padding:20px;color:#5f6368;font-size:13px">No matches.</div>';
+  }
+  function renderChips() {
+    var cities = ['All'], seen = {};
+    PROPS.forEach(function (p) { if (!seen[p.city]) { seen[p.city] = 1; cities.push(p.city); } });
+    chips.innerHTML = cities.map(function (c) {
+      return '<button data-city="' + c + '" class="' + (c === city ? 'on' : '') + '">' + c + '</button>';
+    }).join('');
+  }
+  function bySlug(s) { return PROPS.filter(function (p) { return p.slug === s; })[0]; }
+  function cityGroup(c) { return PROPS.filter(function (p) { return p.city === c; }); }
+  list.addEventListener('click', function (e) {
+    if (e.target.closest('a')) return;
+    var it = e.target.closest('.gp-item'); if (!it) return;
+    E.focus(bySlug(it.getAttribute('data-slug')));
+  });
+  chips.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    city = b.getAttribute('data-city'); renderChips(); renderList();
+    if (city === 'All') E.reset(); else E.focusCity(city);
+    E.refresh();
+  });
+  q.addEventListener('input', function () { query = q.value.trim().toLowerCase(); renderList(); E.refresh(); });
+  setTimeout(function () { var h = document.getElementById('hint'); if (h) h.style.display = 'none'; }, 7000);
+
+  /* ================= REAL MAP (Leaflet + live tiles) ================= */
+  function initReal() {
+    var map = L.map('realmap', { zoomControl: false, worldCopyJump: true });
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+    var attr = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+    var styles = [
+      { n: 'Map', i: 'ri-earth-line', t: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: attr + ' contributors &copy; <a href="https://carto.com/attributions">CARTO</a>', subdomains: 'abcd', maxZoom: 20 }) },
+      { n: 'Satellite', i: 'ri-earth-line', t: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri — Maxar, Earthstar Geographics', maxZoom: 19 }) },
+      { n: 'Dark', i: 'ri-moon-line', t: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: attr + ' contributors &copy; CARTO', subdomains: 'abcd', maxZoom: 20 }) }
+    ];
+    var si = 0; styles[0].t.addTo(map);
+    var KH = L.latLngBounds([10.35, 102.30], [14.72, 107.65]);
+    map.fitBounds(KH, { padding: [10, 10] });
+    var layer = L.layerGroup().addTo(map), mk = {};
+    var pinIcon = L.divIcon({
+      className: 'pin-div',
+      html: '<svg width="30" height="42" viewBox="0 0 30 42"><path d="M15,41 C10,30 1,24 1,14 A14,14 0 1,1 29,14 C29,24 20,30 15,41 Z" fill="#ea4335" stroke="#a50e0e"/><circle cx="15" cy="14" r="5.5" fill="#fff"/></svg>',
+      iconSize: [30, 42], iconAnchor: [15, 41], popupAnchor: [0, -36]
+    });
+    function rebuild() {
+      layer.clearLayers(); mk = {};
+      var z = map.getZoom();
+      if (z < 9) {
+        var cities = {}, i, p;
+        for (i = 0; i < PROPS.length; i++) { p = PROPS[i]; (cities[p.city] = cities[p.city] || []).push(p); }
+        Object.keys(cities).forEach(function (c) {
+          var g = cities[c], lat = 0, lng = 0;
+          g.forEach(function (x) { lat += x.lat; lng += x.lng; });
+          var m = L.marker([lat / g.length, lng / g.length], {
+            icon: L.divIcon({ className: '', html: '<div class="clbadge">' + g.length + '</div><div class="clcity">' + c + '</div>', iconSize: [60, 64], iconAnchor: [30, 30] })
+          }).addTo(layer);
+          m.on('click', function () { map.flyToBounds(L.latLngBounds(g.map(function (x) { return [x.lat, x.lng]; })), { padding: [70, 70], maxZoom: 14 }); });
+        });
+      } else {
+        PROPS.filter(visible).forEach(function (p) {
+          var m = L.marker([p.lat, p.lng], { icon: pinIcon }).addTo(layer);
+          m.bindPopup(iwHTML(p), { closeButton: true });
+          mk[p.slug] = m;
+        });
+      }
+    }
+    map.on('zoomend', rebuild);
+    rebuild();
+    document.getElementById('bstyle').onclick = function () {
+      map.removeLayer(styles[si].t); si = (si + 1) % styles.length; styles[si].t.addTo(map);
+      this.querySelector('i').className = styles[si].i;
+      this.title = 'Style: ' + styles[si].n;
+    };
+    document.getElementById('breset').onclick = function () { map.flyToBounds(KH, { padding: [10, 10] }); };
+    E = {
+      focus: function (p) {
+        map.flyTo([p.lat, p.lng], Math.max(map.getZoom(), 15), { duration: .9 });
+        var open = function () { if (mk[p.slug]) mk[p.slug].openPopup(); map.off('moveend', open); };
+        map.on('moveend', open);
+      },
+      focusCity: function (c) {
+        var g = cityGroup(c);
+        map.flyToBounds(L.latLngBounds(g.map(function (x) { return [x.lat, x.lng]; })), { padding: [70, 70], maxZoom: 14 });
+      },
+      reset: function () { map.flyToBounds(KH, { padding: [10, 10] }); },
+      refresh: rebuild
+    };
+  }
+
+  /* ============ OFFLINE FALLBACK (self-contained SVG engine) ============ */
+  function initFall() {
+    document.getElementById('fall').hidden = false;
+    document.getElementById('bstyle').style.display = 'none';
+    var svg = document.getElementById('fsvg'), pinsG = document.getElementById('fpins'),
+        wrap = document.getElementById('mapwrap'), WH = 880, vb = { x: 0, y: 0, w: 1000 }, CW = 1, CH = 1;
+    function vh() { return vb.w * CH / CW; }
+    function apply() { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vh()); render(); }
+    function fit() { CW = wrap.clientWidth; CH = wrap.clientHeight;
+      var w = Math.max(1000, WH * CW / CH);
+      vb = { x: (1000 - w) / 2, y: (WH - w * CH / CW) / 2, w: w }; apply(); }
+    function zoom(f, wx, wy) { var w2 = Math.min(1500, Math.max(26, vb.w * f)); f = w2 / vb.w;
+      vb.x = wx - (wx - vb.x) * f; vb.y = wy - (wy - vb.y) * f; vb.w = w2; apply(); }
+    function mw(e) { var r = wrap.getBoundingClientRect();
+      return [vb.x + (e.clientX - r.left) / r.width * vb.w, vb.y + (e.clientY - r.top) / r.height * vh()]; }
+    function flyTo(x, y, w) { var t = { w: w, x: x - w / 2, y: y - (w * CH / CW) / 2 }, s = { x: vb.x, y: vb.y, w: vb.w }, i = 0;
+      (function st() { i++; var k = i / 26, e = 1 - Math.pow(1 - k, 3);
+        vb.x = s.x + (t.x - s.x) * e; vb.y = s.y + (t.y - s.y) * e; vb.w = s.w + (t.w - s.w) * e; apply();
+        if (k < 1) requestAnimationFrame(st); })(); }
+    function render() {
+      var s = vb.w / CW, cl = vb.w > 330, html = '', g = {}, i, p;
+      for (i = 0; i < PROPS.length; i++) { p = PROPS[i]; (g[p.city] = g[p.city] || []).push(p); }
+      for (var c in g) {
+        var n = g[c].length, cx = 0, cy = 0;
+        for (i = 0; i < n; i++) { cx += g[c][i].x; cy += g[c][i].y; }
+        cx /= n; cy /= n;
+        if (cl && n > 1) {
+          html += '<g data-city="' + c + '" class="clk" style="cursor:pointer" transform="translate(' + cx + ',' + cy + ') scale(' + s + ')"><circle cx="0" cy="0" r="26" fill="rgba(234,67,53,.25)"></circle><circle class="cl-c" r="19" stroke-width="2.5"></circle><text class="cl-t" y="5" font-size="14">' + n + '</text><text class="cty" y="40" font-size="12.5">' + c + '</text></g>';
+        } else {
+          for (i = 0; i < n; i++) { var q2 = g[c][i];
+            html += '<g data-slug="' + q2.slug + '" style="cursor:pointer" transform="translate(' + q2.x + ',' + q2.y + ') scale(' + s + ')"><path class="pinp" d="M0,0 C-7.5,-20 -13,-25 -13,-33 A13,13 0 1,1 13,-33 C13,-25 7.5,-20 0,0 Z"></path><circle class="pinc" cy="-33" r="5"></circle><title>' + q2.name + '</title></g>'; }
+        }
+      }
+      pinsG.innerHTML = html;
+    }
+    svg.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.clk')) return;
+      var sx = e.clientX, sy = e.clientY, bx = vb.x, by = vb.y, r = wrap.getBoundingClientRect();
+      function mv(ev) { vb.x = bx - (ev.clientX - sx) * vb.w / r.width; vb.y = by - (ev.clientY - sy) * vh() / r.height; apply(); }
+      window.addEventListener('pointermove', mv);
+      window.addEventListener('pointerup', function () { window.removeEventListener('pointermove', mv); }, { once: true });
+    });
+    wrap.addEventListener('wheel', function (e) { e.preventDefault(); var w = mw(e); zoom(e.deltaY < 0 ? 0.8 : 1.25, w[0], w[1]); }, { passive: false });
+    svg.addEventListener('click', function (e) {
+      var c = e.target.closest('.clk');
+      var pin = e.target.closest('[data-slug]');
+      if (pin) { var pp = bySlug(pin.getAttribute('data-slug')); if (pp && pp.maps) window.open(pp.maps, '_blank', 'noopener'); return; }
+      if (c) { var g2 = cityGroup(c.getAttribute('data-city')), xs = g2.map(function (p) { return p.x; }), ys = g2.map(function (p) { return p.y; });
+        flyTo((Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2, (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2, 120); }
+    });
+    document.getElementById('breset').onclick = fit;
+    E = {
+      focus: function (p) { flyTo(p.x, p.y, 120); },
+      focusCity: function (c) { var g2 = cityGroup(c), xs = g2.map(function (p) { return p.x; }), ys = g2.map(function (p) { return p.y; });
+        flyTo((Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2, (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2, 130); },
+      reset: fit, refresh: render
+    };
+    fit();
+  }
+
+  /* No Google Maps JavaScript API is used here. The embedded preview is
+     key-free; each property exposes a real Google Maps browser/app link. */
+  document.getElementById('bfull').onclick = function () {
+    var sh = document.getElementById('gmshell');
+    if (document.fullscreenElement) document.exitFullscreen(); else sh.requestFullscreen();
+  };
+  renderChips(); renderList();
+  if (window.L) initReal(); else initFall();
+})();
+</script>
+{% endblock %}

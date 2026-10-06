@@ -1,0 +1,104 @@
+{% load static hotel_extras %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>document.documentElement.classList.add("js");</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32.png' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/favicon-16.png' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}">
+  <link rel="manifest" href="{% static 'site.webmanifest' %}">
+  <meta name="theme-color" content="#0e1a2f">
+  <title>{% block title %}PMS{% endblock %} · Aurelia Grand</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/fonts/remixicon.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260929-rbac-housekeeping">
+  <link rel="stylesheet" href="{% static 'css/ios.css' %}?v=20260927-logo-simple">
+  <link rel="stylesheet" href="{% static 'css/premium.css' %}?v=20260928-responsive-1">
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="scroll-progress" aria-hidden="true"></div>
+<div class="pms-scrim" id="pms-scrim" aria-hidden="true"></div>
+<div class="pms-layout">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="{% if user.role == 'housekeeping' %}{% url 'operations:task_board' %}{% else %}{% url 'pms:dashboard' %}{% endif %}">
+      <span class="mark">A</span>
+      <span><span class="name">Aurelia Grand</span><br><span class="sub">Property OS</span></span>
+    </a>
+
+    {% if user.role != 'housekeeping' %}
+    <form method="get" action="{% url 'pms:switch_property' %}" style="padding:0 6px 10px" id="prop-switch">
+      <label class="side-label" style="padding:6px 6px 4px;display:block">Operating hotel</label>
+      <select name="property" onchange="this.form.submit()"
+              style="background:#16233d;color:#e9ecf3;border-color:#2a3a5c;font-size:13px;padding:8px 10px">
+        {% if user.is_group_manager_or_above %}<option value="all" {% if not active_property %}selected{% endif %}><i class="ri-global-line" aria-hidden="true"></i> All properties (chain)</option>{% endif %}
+        {% for pr in properties %}
+        <option value="{{ pr.pk }}" {% if active_property and active_property.pk == pr.pk %}selected{% endif %}>{{ pr.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+
+    <span class="side-label">Front office</span>
+    <a class="side-link {% nav_active '/pms/' exact=True %}" href="{% url 'pms:dashboard' %}"><span class="ic"><i class="ri-dashboard-line" aria-hidden="true"></i></span> Dashboard</a>
+    <a class="side-link {% nav_active '/pms/reservations' %}" href="{% url 'pms:reservations' %}"><span class="ic"><i class="ri-folder-line" aria-hidden="true"></i></span> Reservations</a>
+    <a class="side-link {% nav_active '/pms/calendar' %}" href="{% url 'pms:calendar' %}"><span class="ic"><i class="ri-calendar-event-line" aria-hidden="true"></i></span> Calendar</a>
+
+    <span class="side-label">Operations</span>
+    <a class="side-link {% nav_active '/operations/rooms' %}" href="{% url 'operations:room_board' %}"><span class="ic"><i class="ri-door-line" aria-hidden="true"></i></span> Room Board</a>
+    <a class="side-link {% nav_active '/operations/housekeeping' %}" href="{% url 'operations:task_board' %}"><span class="ic"><i class="ri-brush-line" aria-hidden="true"></i></span> Housekeeping</a>
+    <a class="side-link {% nav_active '/operations/maintenance' %}" href="{% url 'operations:maintenance' %}"><span class="ic"><i class="ri-tools-line" aria-hidden="true"></i></span> Maintenance</a>
+
+    {% if user.is_manager_or_above %}
+    <span class="side-label">Business</span>
+    <a class="side-link {% nav_active '/pms/rates' %}" href="{% url 'pms:rates' %}"><span class="ic"><i class="ri-price-tag-3-line" aria-hidden="true"></i></span> Rates & Rules</a>
+    <a class="side-link {% nav_active '/finance/payments' %}" href="{% url 'finance:payments' %}"><span class="ic"><i class="ri-bank-card-line" aria-hidden="true"></i></span> Payments</a>
+    <a class="side-link {% nav_active '/finance/invoices' %}" href="{% url 'finance:invoices' %}"><span class="ic"><i class="ri-file-text-line" aria-hidden="true"></i></span> Invoices</a>
+    <a class="side-link {% nav_active '/finance/reports' %}" href="{% url 'finance:reports' %}"><span class="ic"><i class="ri-bar-chart-2-line" aria-hidden="true"></i></span> Reports</a>
+    <a class="side-link {% nav_active '/analytics' %}" href="{% url 'analytics:overview' %}"><span class="ic"><i class="ri-line-chart-line" aria-hidden="true"></i></span> Analytics</a>
+    {% else %}
+    <span class="side-label">Business</span>
+    <a class="side-link {% nav_active '/finance/payments' %}" href="{% url 'finance:payments' %}"><span class="ic"><i class="ri-bank-card-line" aria-hidden="true"></i></span> Payments</a>
+    <a class="side-link {% nav_active '/finance/invoices' %}" href="{% url 'finance:invoices' %}"><span class="ic"><i class="ri-file-text-line" aria-hidden="true"></i></span> Invoices</a>
+    {% endif %}
+    {% else %}
+    <span class="side-label">My work</span>
+    <a class="side-link {% nav_active '/operations/housekeeping' %}" href="{% url 'operations:task_board' %}"><span class="ic"><i class="ri-brush-line" aria-hidden="true"></i></span> My Housekeeping Tasks</a>
+    {% endif %}
+
+    <div class="side-foot">
+      <a class="side-link" href="{% url 'core:home' %}"><span class="ic"><i class="ri-global-line" aria-hidden="true"></i></span> View public site</a>
+      {% if user.is_superuser %}<a class="side-link" href="/admin/"><span class="ic"><i class="ri-settings-3-line" aria-hidden="true"></i></span> Django admin</a>{% endif %}
+      <div class="flex gap-2 mt-3">
+        <span class="avatar" title="{{ user.username }}">{{ user.username|slice:":1"|upper }}</span>
+        <span style="min-width:0">
+          <b style="color:#fff;display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis">{{ user.get_full_name|default:user.username }}</b>
+          <span class="tiny">{{ user.get_role_display }}</span>
+        </span>
+        <form method="post" action="{% url 'accounts:logout' %}" style="margin-left:auto">{% csrf_token %}
+          <button class="btn btn-ghost btn-sm" style="color:#8b95a9" title="Sign out" type="submit"><i class="ri-logout-box-r-line" aria-hidden="true"></i></button>
+        </form>
+      </div>
+    </div>
+  </aside>
+
+  <main class="pms-main">
+    <div class="flex gap-2 mb-2" style="display:none" id="mobilebar">
+      <button class="btn btn-outline btn-sm" id="sidebar-toggle" aria-controls="sidebar" aria-expanded="false"><i class="ri-menu-line" aria-hidden="true"></i> Menu</button>
+    </div>
+    <div class="toasts" aria-live="polite" aria-atomic="true">{% include "partials/messages.html" %}</div>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script>
+  if (window.matchMedia("(max-width: 1020px)").matches) {
+    document.getElementById("mobilebar").style.display = "flex";
+  }
+</script>
+<script src="{% static 'js/app.js' %}?v=20260928-ops-scroll"></script>
+{% block scripts %}{% endblock %}
+<script src="{% static 'js/ios-nav.js' %}" defer></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}Housekeeping{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div><h1>Housekeeping board</h1><div class="sub">Clean tasks are created automatically at check-out and by the nightly job</div></div>
+</div>
+
+<div class="finance-explainer task-permission-guide" role="note">
+  <i class="ri-shield-user-line" aria-hidden="true"></i>
+  <span><b>How task assignment works:</b> Housekeeping sees only tasks assigned to them and can start or complete those jobs. Group Manager, Property Manager and Administrator can assign, reassign, start and complete tasks within their allowed hotel scope. Reception can view the board but cannot change task ownership.</span>
+</div>
+
+{% if can_assign_tasks %}
+<div class="finance-explainer task-permission-guide" role="status">
+  <i class="ri-team-line" aria-hidden="true"></i>
+  <span><b>Housekeeping team for this hotel · {{ housekeepers|length }} cleaners:</b>
+    {% for u in housekeepers %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% endfor %}
+  </span>
+</div>
+{% endif %}
+
+<div class="tabs">
+  {% if not is_housekeeping %}<a class="tab {% if tab == 'open' %}active{% endif %}" href="?tab=open">Open</a>{% endif %}
+  <a class="tab {% if tab == 'mine' %}active{% endif %}" href="?tab=mine">My tasks</a>
+  <a class="tab {% if tab == 'completed' %}active{% endif %}" href="?tab=completed">Completed</a>
+</div>
+
+{% if tab == 'completed' %}
+<div class="card"><div class="table-wrap"><table class="data">
+  <thead><tr><th>Room</th><th>Task</th><th>Completed by</th><th>When</th></tr></thead>
+  <tbody>
+  {% for t in completed %}
+    <tr><td><b>{{ t.room.number }}</b></td><td>{{ t.get_task_type_display }}</td>
+    <td>{{ t.assigned_to.get_full_name|default:"—" }}</td><td>{{ t.completed_at|date:"d M Y H:i" }}</td></tr>
+  {% empty %}<tr><td colspan="4" class="empty-state">Nothing completed yet</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% else %}
+<div class="kanban">
+  <div class="kanban-col">
+    <h4>Pending <span class="badge badge-muted no-dot">{{ pending|length }}</span></h4>
+    {% for t in pending %}
+    <div class="task-card">
+      <div class="flex-between"><span class="t-room">Room {{ t.room.number }}</span>
+        <span class="badge badge-{% if t.priority == 'urgent' %}danger{% elif t.priority == 'high' %}warning{% else %}muted{% endif %}" style="font-size:10.5px">{{ t.priority }}</span></div>
+      <div class="t-meta">{{ t.get_task_type_display }} · {{ t.room.room_type.name }} · floor {{ t.room.floor }}</div>
+      {% if t.booking %}<div class="t-meta">Departure: {{ t.booking.guest_name }} ({{ t.booking.code }})</div>{% endif %}
+      <div class="t-meta"><i class="ri-user-line" aria-hidden="true"></i> {% if t.assigned_to %}Assigned to {{ t.assigned_to.get_full_name|default:t.assigned_to.username }}{% else %}Unassigned{% endif %}</div>
+      {% if can_assign_tasks %}
+      <form class="task-assign" method="post" action="{% url 'operations:task_assign' t.pk %}">
+        {% csrf_token %}
+        <select name="assigned_to" aria-label="Assign room {{ t.room.number }} task">
+          <option value="">Unassigned</option>
+          {% for u in housekeepers %}<option value="{{ u.pk }}" {% if t.assigned_to_id == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline btn-sm" type="submit">Assign</button>
+      </form>
+      {% endif %}
+      {% if can_operate_tasks %}
+        {% if can_assign_tasks or t.assigned_to_id == user.pk %}
+        <div class="t-actions">
+          <form method="post" action="{% url 'operations:task_start' t.pk %}">{% csrf_token %}<button class="btn btn-primary btn-sm" type="submit">Start</button></form>
+          <form method="post" action="{% url 'operations:task_complete' t.pk %}">{% csrf_token %}<button class="btn btn-success btn-sm" type="submit">Mark done</button></form>
+        </div>
+        {% else %}<div class="t-meta task-locked"><i class="ri-lock-line" aria-hidden="true"></i> Waiting for the assigned housekeeper</div>{% endif %}
+      {% endif %}
+    </div>
+    {% empty %}<div class="empty-state small">No pending tasks <i class="ri-sparkling-2-line" aria-hidden="true"></i></div>{% endfor %}
+  </div>
+  <div class="kanban-col">
+    <h4>In progress <span class="badge badge-info no-dot">{{ in_progress|length }}</span></h4>
+    {% for t in in_progress %}
+    <div class="task-card">
+      <div class="flex-between"><span class="t-room">Room {{ t.room.number }}</span><span class="badge badge-info" style="font-size:10.5px">{{ t.get_task_type_display }}</span></div>
+      <div class="t-meta">Started {{ t.started_at|timesince }} ago · {% if t.assigned_to %}{{ t.assigned_to.get_full_name|default:t.assigned_to.username }}{% else %}Unassigned{% endif %}</div>
+      {% if can_assign_tasks %}
+      <form class="task-assign" method="post" action="{% url 'operations:task_assign' t.pk %}">
+        {% csrf_token %}
+        <select name="assigned_to" aria-label="Reassign room {{ t.room.number }} task">
+          <option value="">Unassigned</option>
+          {% for u in housekeepers %}<option value="{{ u.pk }}" {% if t.assigned_to_id == u.pk %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline btn-sm" type="submit">Reassign</button>
+      </form>
+      {% endif %}
+      {% if can_operate_tasks %}
+        {% if can_assign_tasks or t.assigned_to_id == user.pk %}
+        <div class="t-actions"><form method="post" action="{% url 'operations:task_complete' t.pk %}">{% csrf_token %}<button class="btn btn-success btn-sm" type="submit">Complete</button></form></div>
+        {% else %}<div class="t-meta task-locked"><i class="ri-lock-line" aria-hidden="true"></i> Assigned to another housekeeper</div>{% endif %}
+      {% endif %}
+    </div>
+    {% empty %}<div class="empty-state small">Nothing in progress</div>{% endfor %}
+  </div>
+  <div class="kanban-col">
+    <h4>Recently completed</h4>
+    {% for t in completed %}
+    <div class="task-card" style="opacity:.8">
+      <span class="t-room">Room {{ t.room.number }}</span>
+      <div class="t-meta">{{ t.get_task_type_display }} · {{ t.completed_at|timesince }} ago{% if t.assigned_to %} · {{ t.assigned_to.get_full_name|default:t.assigned_to.username }}{% endif %}</div>
+    </div>
+    {% empty %}<div class="empty-state small">—</div>{% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{
+  "name": "Aurelia Collection",
+  "short_name": "Aurelia",
+  "description": "Ten luxury sanctuaries across Cambodia.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7f5",
+  "theme_color": "#0e1a2f",
+  "icons": [
+    {"src": "/static/img/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/static/img/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

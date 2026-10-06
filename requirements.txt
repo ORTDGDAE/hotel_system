@@ -1,0 +1,10 @@
+Django>=5.2,<5.3
+PyMySQL>=1.1,<2.0
+psycopg[binary]>=3.2,<4.0
+# Render / production web process and static-file serving
+gunicorn>=23.0,<24.0
+whitenoise>=6.8,<7.0
+dj-database-url>=2.2,<3.0
+# Optional scale extras:
+# django-redis      # cache + session backend
+# celery[redis]     # move nightly_ops + emails off-request

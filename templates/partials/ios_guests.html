@@ -1,0 +1,141 @@
+{# iOS-style guests & rooms stepper sheet. Enhances any form[data-guestpair] containing selects named rooms / adults / children. #}
+<style>
+  .igs-btn { width:100%; display:flex; align-items:center; gap:9px; text-align:left;
+    background:#fff; border:1px solid rgba(20,30,50,.14); border-radius:14px;
+    padding:9px 12px; cursor:pointer; transition:box-shadow .18s, border-color .18s; }
+  .igs-btn:hover { border-color:rgba(0,122,255,.45); }
+  .igs-btn:focus-visible { outline:none; box-shadow:0 0 0 4px rgba(0,122,255,.18); border-color:#007AFF; }
+  .igs-btn .ic { color:#007AFF; font-size:17px; }
+  .igs-btn .lb { display:block; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:#8a90a0; font-weight:700; }
+  .igs-btn .vl { display:block; font-size:14.5px; font-weight:650; color:#1c1e26; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis; }
+  .igs-scrim { position:fixed; inset:0; z-index:94; background:rgba(8,10,16,.44);
+    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+    opacity:0; transition:opacity .22s ease; }
+  .igs-scrim.on { opacity:1; }
+  .igs-pop.igs-sheet { position:fixed; left:50%; top:50%; margin:0; z-index:95;
+    width:min(400px, 94vw); max-height:88vh; overflow:auto;
+    transform:translate(-50%,-50%);
+    animation:igs-sheet-in .32s cubic-bezier(.32,.72,0,1) both; }
+  @keyframes igs-sheet-in {
+    from { opacity:0; transform:translate(-50%,-46%) scale(.94); }
+    to   { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+  .igs-pop { position:absolute; z-index:91; margin-top:8px; left:0; width:min(340px, 94vw);
+    background:rgba(255,255,255,.88); backdrop-filter:blur(26px) saturate(180%);
+    -webkit-backdrop-filter:blur(26px) saturate(180%);
+    border:1px solid rgba(255,255,255,.65); border-radius:22px;
+    box-shadow:0 28px 80px -22px rgba(10,20,40,.45), 0 4px 18px rgba(10,20,40,.12);
+    padding:14px 16px 8px; animation:igsIn .26s cubic-bezier(.32,.72,0,1); }
+  @keyframes igsIn { from { opacity:0; transform:scale(.94) translateY(8px); } to { opacity:1; transform:none; } }
+  .igs-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .igs-head b { font-size:15px; color:#1c1e26; }
+  .igs-head button { border:0; background:none; color:#007AFF; font-size:14.5px; font-weight:700;
+    cursor:pointer; padding:5px 8px; border-radius:9px; }
+  .igs-head button:hover { background:rgba(0,122,255,.1); }
+  .igs-row { display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:13px 2px; border-bottom:1px solid rgba(60,60,67,.14); }
+  .igs-row:last-child { border-bottom:0; }
+  .igs-row .t b { display:block; font-size:15px; color:#1c1e26; font-weight:650; }
+  .igs-row .t span { display:block; font-size:12px; color:#8a90a0; margin-top:1px; }
+  .igs-step { display:flex; align-items:center; gap:14px; }
+  .igs-step button { width:34px; height:34px; border:0; border-radius:50%;
+    background:rgba(120,130,150,.16); color:#007AFF; font-size:17px; cursor:pointer;
+    display:grid; place-items:center; transition:all .15s; }
+  .igs-step button:hover { background:rgba(120,130,150,.26); }
+  .igs-step button:active { transform:scale(.88); }
+  .igs-step button[disabled] { opacity:.32; pointer-events:none; }
+  .igs-step .v { min-width:26px; text-align:center; font-size:16.5px; font-weight:700; color:#1c1e26; }
+  .igs-step .v.bump { animation:igsBump .22s ease; }
+  @keyframes igsBump { from { opacity:.1; transform:translateY(7px); } to { opacity:1; transform:none; } }
+</style>
+<script>
+(function () {
+  document.querySelectorAll('form[data-guestpair]').forEach(function (form) {
+    var sR = form.querySelector('select[name=rooms]'),
+        sA = form.querySelector('select[name=adults]'),
+        sC = form.querySelector('select[name=children]');
+    if (!sR || !sA || !sC) return;
+    var LIM = {
+      rooms: { min: 1, max: +sR.options[sR.options.length - 1].value },
+      adults: { min: 1, max: +sA.options[sA.options.length - 1].value },
+      children: { min: 0, max: +sC.options[sC.options.length - 1].value }
+    };
+    var val = { rooms: +sR.value, adults: +sA.value, children: +sC.value };
+    var fields = [sR, sA, sC].map(function (s) { return s.closest('.field'); });
+    fields.forEach(function (f) { if (f) f.style.display = 'none'; });
+
+    var host = document.createElement('div');
+    host.className = 'field idg-field';
+    host.style.margin = '0'; host.style.position = 'relative';
+    host.innerHTML = '<label>Rooms &amp; guests</label>' +
+      '<button type="button" class="igs-btn"><span class="ic"><i class="ri-group-line" aria-hidden="true"></i></span>' +
+      '<span style="min-width:0"><span class="lb">Who\'s staying</span><span class="vl"></span></span></button>';
+    fields[0].parentNode.insertBefore(host, fields[0]);
+    var btn = host.querySelector('.igs-btn'), vl = host.querySelector('.vl'), pop = null;
+
+    function summary() {
+      var g = val.adults + val.children;
+      return g + ' guest' + (g > 1 ? 's' : '') + ' · ' + val.rooms + ' room' + (val.rooms > 1 ? 's' : '') +
+        (val.children ? ' (' + val.children + ' child' + (val.children > 1 ? 'ren' : '') + ')' : '');
+    }
+    function sync(bumpKey) {
+      sR.value = val.rooms; sA.value = val.adults; sC.value = val.children;
+      vl.textContent = summary();
+      if (pop) {
+        Object.keys(val).forEach(function (k) {
+          var v = pop.querySelector('[data-v="' + k + '"]');
+          if (v) {
+            if (bumpKey === k) { v.classList.remove('bump'); void v.offsetWidth; v.classList.add('bump'); }
+            v.textContent = val[k];
+          }
+          var m = pop.querySelector('[data-m="' + k + '"]'), p = pop.querySelector('[data-p="' + k + '"]');
+          if (m) m.disabled = val[k] <= LIM[k].min;
+          if (p) p.disabled = val[k] >= LIM[k].max;
+        });
+      }
+    }
+    function close() {
+      if (pop) { pop.remove(); pop = null; }
+      document.querySelectorAll('.igs-scrim').forEach(function (s) { s.remove(); });
+      document.body.classList.remove('ui-locked');
+    }
+    function open() {
+      close();
+      pop = document.createElement('div');
+      pop.className = 'igs-pop igs-sheet';
+      var rows = [
+        ['rooms', 'Rooms', 'Max ' + LIM.rooms.max + ' per search'],
+        ['adults', 'Adults', 'Age 13+'],
+        ['children', 'Children', 'Ages 0–12']
+      ].map(function (r) {
+        return '<div class="igs-row"><div class="t"><b>' + r[1] + '</b><span>' + r[2] + '</span></div>' +
+          '<div class="igs-step"><button type="button" data-m="' + r[0] + '" aria-label="Fewer ' + r[1] +
+          '"><i class="ri-subtract-line"></i></button><span class="v" data-v="' + r[0] + '"></span>' +
+          '<button type="button" data-p="' + r[0] + '" aria-label="More ' + r[1] +
+          '"><i class="ri-add-line"></i></button></div></div>';
+      }).join('');
+      pop.innerHTML = '<div class="igs-head"><b>Who\'s staying?</b><button type="button" data-done>Done</button></div>' + rows;
+      var scrim = document.createElement('div');
+      scrim.className = 'igs-scrim';
+      scrim.addEventListener('click', close);
+      document.body.appendChild(scrim);
+      requestAnimationFrame(function () { scrim.classList.add('on'); });
+      document.body.classList.add('ui-locked');
+      document.body.appendChild(pop);
+      sync(null);
+      pop.addEventListener('click', function (e) {
+        var m = e.target.closest('[data-m]'), p = e.target.closest('[data-p]');
+        if (m) { var k = m.getAttribute('data-m'); val[k] = Math.max(LIM[k].min, val[k] - 1); sync(k); }
+        else if (p) { var k2 = p.getAttribute('data-p'); val[k2] = Math.min(LIM[k2].max, val[k2] + 1); sync(k2); }
+        else if (e.target.closest('[data-done]')) close();
+      });
+    }
+    btn.addEventListener('click', open);
+    document.addEventListener('click', function (e) {
+      if (pop && !pop.contains(e.target) && !e.target.closest('.igs-btn')) close();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    sync(null);
+  });
+})();
+</script>

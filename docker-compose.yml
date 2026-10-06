@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: aurelia
+      POSTGRES_USER: aurelia
+      POSTGRES_PASSWORD: aurelia
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aurelia"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: "change-me-in-production"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      POSTGRES_DB: aurelia
+      POSTGRES_USER: aurelia
+      POSTGRES_PASSWORD: aurelia
+      POSTGRES_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    # Nightly automation (no-shows, housekeeping queue) at 02:00 local:
+    #   0 2 * * * docker compose exec web python manage.py nightly_ops
+
+volumes:
+  pgdata:

@@ -1,0 +1,161 @@
+<style>
+  /* iPhone-premium property picker: same grouped-field treatment as dates and guests. */
+  .iph-btn { width:100%; min-height:48px; display:flex; align-items:center; gap:9px; text-align:left;
+    background:#fff; border:1px solid rgba(20,30,50,.14); border-radius:14px;
+    padding:9px 12px; cursor:pointer; transition:box-shadow .18s, border-color .18s, transform .12s; }
+  .iph-btn:hover { border-color:rgba(0,122,255,.45); }
+  .iph-btn:active { transform:scale(.985); }
+  .iph-btn:focus-visible { outline:none; box-shadow:0 0 0 4px rgba(0,122,255,.18); border-color:#007AFF; }
+  .iph-btn .ic { flex:0 0 auto; color:#007AFF; font-size:17px; }
+  .iph-btn .tx { min-width:0; }
+  .iph-btn .lb { display:block; font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:#8a90a0; font-weight:700; }
+  .iph-btn .vl { display:block; font-size:14.5px; font-weight:650; color:#1c1e26; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .iph-btn .chev { margin-left:auto; flex:0 0 auto; color:#737b8c; font-size:18px; }
+  .iph-scrim { position:fixed; inset:0; z-index:94; background:rgba(8,10,16,.44);
+    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); opacity:0; transition:opacity .22s ease; }
+  .iph-scrim.on { opacity:1; }
+  .iph-pop.iph-sheet { position:fixed; left:50%; top:50%; margin:0; z-index:95;
+    width:min(560px, 94vw); max-height:88vh; overflow:auto; transform:translate(-50%,-50%);
+    animation:iph-sheet-in .32s cubic-bezier(.32,.72,0,1) both; }
+  @keyframes iph-sheet-in { from { opacity:0; transform:translate(-50%,-46%) scale(.94); }
+    to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+  .iph-pop { background:rgba(255,255,255,.90); backdrop-filter:blur(26px) saturate(180%);
+    -webkit-backdrop-filter:blur(26px) saturate(180%); border:1px solid rgba(255,255,255,.65);
+    border-radius:22px; box-shadow:0 28px 80px -22px rgba(10,20,40,.45), 0 4px 18px rgba(10,20,40,.12);
+    padding:14px 16px 10px; }
+  .iph-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .iph-head b { font-size:15px; color:#1c1e26; }
+  .iph-head button { border:0; background:none; color:#007AFF; font-size:14.5px; font-weight:700;
+    cursor:pointer; padding:5px 8px; border-radius:9px; }
+  .iph-head button:hover { background:rgba(0,122,255,.1); }
+  .iph-reco { margin:5px 0 12px; }
+  .iph-reco-head { display:flex; align-items:center; justify-content:space-between; margin:0 2px 7px; }
+  .iph-reco-head span { font-size:10.5px; text-transform:uppercase; letter-spacing:.10em; color:#8a90a0; font-weight:750; }
+  .iph-reco-head small { font-size:10.5px; color:#007AFF; font-weight:650; }
+  .iph-reco-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:7px; }
+  .iph-reco-card { min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:5px; text-align:left;
+    border:1px solid rgba(0,122,255,.13); border-radius:13px; padding:9px 9px 8px;
+    background:linear-gradient(145deg, rgba(0,122,255,.10), rgba(255,255,255,.64)); color:#1c1e26; cursor:pointer;
+    transition:transform .18s cubic-bezier(.32,.72,0,1), box-shadow .18s, border-color .18s, background .18s; }
+  .iph-reco-card:hover, .iph-reco-card:focus-visible { outline:none; border-color:rgba(0,122,255,.42); box-shadow:0 8px 20px -13px rgba(0,80,180,.55); transform:translateY(-2px); }
+  .iph-reco-card:active { transform:scale(.97); }
+  .iph-reco-card .top { display:flex; align-items:center; justify-content:space-between; width:100%; }
+  .iph-reco-card .pin { width:25px; height:25px; border-radius:8px; display:grid; place-items:center; background:#fff; color:#007AFF; font-size:14px; }
+  .iph-reco-card .star { font-size:10px; color:#b08d42; white-space:nowrap; }
+  .iph-reco-card .name { width:100%; font-size:11.5px; line-height:1.15; font-weight:750; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .iph-reco-card .city { width:100%; font-size:10px; color:#737b8c; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .iph-list { display:grid; gap:4px; }
+  .iph-option { width:100%; display:flex; align-items:center; gap:12px; text-align:left;
+    border:0; border-radius:14px; padding:12px 10px; background:transparent; color:#1c1e26; cursor:pointer;
+    transition:background .14s, transform .12s; }
+  .iph-option:hover, .iph-option:focus-visible { outline:none; background:rgba(0,122,255,.09); }
+  .iph-option:active { transform:scale(.985); }
+  .iph-option .pin { width:34px; height:34px; border-radius:11px; display:grid; place-items:center;
+    background:rgba(0,122,255,.10); color:#007AFF; font-size:17px; flex:0 0 auto; }
+  .iph-option .copy { min-width:0; }
+  .iph-option .name { display:block; font-size:14.5px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .iph-option .city { display:block; margin-top:2px; font-size:11.5px; color:#8a90a0; }
+  .iph-option .check { margin-left:auto; color:#007AFF; font-size:19px; opacity:0; }
+  .iph-option.active { background:rgba(0,122,255,.10); }
+  .iph-option.active .check { opacity:1; }
+  .iph-option.is-picked { animation:iph-picked .28s cubic-bezier(.32,.72,0,1); background:rgba(52,199,89,.12); }
+  .iph-reco-card.is-picked { border-color:rgba(52,199,89,.58); background:rgba(52,199,89,.12); animation:iph-picked .28s cubic-bezier(.32,.72,0,1); }
+  @keyframes iph-picked { 0% { transform:scale(.97); } 60% { transform:scale(1.025); } 100% { transform:scale(1); } }
+  @media (max-width:640px) {
+    .iph-pop.iph-sheet { width:calc(100vw - 24px); border-radius:22px; }
+  }
+</style>
+<script>
+(function () {
+  function esc(value) {
+    return String(value).replace(/[&<>"']/g, function (ch) {
+      return ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'})[ch];
+    });
+  }
+  document.querySelectorAll('form[data-propertypair]').forEach(function (form) {
+    var select = form.querySelector('select[name="property"]');
+    if (!select) return;
+    var field = select.closest('.field');
+    if (!field || field.dataset.iphReady === '1') return;
+    field.dataset.iphReady = '1';
+    select.style.display = 'none';
+
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'iph-btn';
+    button.setAttribute('aria-haspopup', 'dialog');
+    button.setAttribute('aria-expanded', 'false');
+    field.appendChild(button);
+
+    var pop = null, scrim = null;
+    function parts(option) {
+      var bits = option.textContent.trim().split(' · ');
+      return { name: bits.shift() || 'All hotels', city: bits.join(' · ') || 'Full collection' };
+    }
+    function current() {
+      return parts(select.options[select.selectedIndex] || select.options[0]);
+    }
+    function syncButton() {
+      var item = current();
+      button.innerHTML = '<span class="ic"><i class="ri-hotel-line" aria-hidden="true"></i></span>' +
+        '<span class="tx"><span class="lb">Stay at</span><span class="vl">' + esc(item.name) + '</span></span>' +
+        '<i class="ri-arrow-down-s-line chev" aria-hidden="true"></i>';
+    }
+    function close() {
+      if (pop) pop.remove();
+      if (scrim) scrim.remove();
+      pop = null; scrim = null;
+      button.setAttribute('aria-expanded', 'false');
+      document.body.classList.remove('ui-locked');
+    }
+    function open() {
+      close();
+      pop = document.createElement('div');
+      pop.className = 'iph-pop iph-sheet';
+      pop.setAttribute('role', 'dialog');
+      pop.setAttribute('aria-modal', 'true');
+      pop.setAttribute('aria-label', 'Choose a hotel');
+      var allOptions = Array.prototype.slice.call(select.options);
+      var options = allOptions.map(function (option) {
+        var item = parts(option), active = option.value === select.value;
+        return '<button type="button" class="iph-option' + (active ? ' active' : '') + '" data-value="' + esc(option.value) + '">' +
+          '<span class="pin"><i class="' + (option.value ? 'ri-hotel-line' : 'ri-global-line') + '" aria-hidden="true"></i></span>' +
+          '<span class="copy"><span class="name">' + esc(item.name) + '</span><span class="city">' + esc(item.city) + '</span></span>' +
+          '<i class="ri-check-line check" aria-hidden="true"></i></button>';
+      }).join('');
+      var featured = allOptions.filter(function (option) { return option.dataset.featured === '1'; }).map(function (option) {
+        var item = parts(option), stars = Number(option.dataset.stars || 0);
+        return '<button type="button" class="iph-reco-card" data-value="' + esc(option.value) + '" aria-label="Recommend ' + esc(item.name) + '">' +
+          '<span class="top"><span class="pin"><i class="ri-sparkling-2-line" aria-hidden="true"></i></span><span class="star">' +
+          (stars ? stars + '★' : 'Featured') + '</span></span><span class="name">' + esc(item.name) + '</span><span class="city">' + esc(item.city) + '</span></button>';
+      }).join('');
+      var recommendation = featured ? '<section class="iph-reco"><div class="iph-reco-head"><span>Recommended stays</span><small>Curated for you</small></div><div class="iph-reco-grid">' + featured + '</div></section>' : '';
+      pop.innerHTML = '<div class="iph-head"><b>Choose a hotel</b><button type="button" data-done>Done</button></div>' + recommendation + '<div class="iph-list">' + options + '</div>';
+      scrim = document.createElement('div');
+      scrim.className = 'iph-scrim';
+      scrim.addEventListener('click', close);
+      document.body.appendChild(scrim);
+      document.body.appendChild(pop);
+      requestAnimationFrame(function () { scrim.classList.add('on'); });
+      button.setAttribute('aria-expanded', 'true');
+      document.body.classList.add('ui-locked');
+      pop.addEventListener('click', function (event) {
+        var option = event.target.closest('[data-value]');
+        if (option) {
+          select.value = option.getAttribute('data-value');
+          option.classList.add('is-picked');
+          option.setAttribute('aria-pressed', 'true');
+          syncButton();
+          var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          window.setTimeout(function () { close(); form.submit(); }, reduced ? 0 : 180);
+        } else if (event.target.closest('[data-done]')) close();
+      });
+      var first = pop.querySelector('.iph-option.active') || pop.querySelector('.iph-option');
+      first && first.focus();
+    }
+    button.addEventListener('click', open);
+    document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && pop) close(); });
+    syncButton();
+  });
+})();
+</script>

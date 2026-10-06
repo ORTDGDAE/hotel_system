@@ -1,0 +1,136 @@
+{% load static hotel_extras %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>document.documentElement.classList.add("js");</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32.png' %}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/favicon-16.png' %}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{% static 'img/apple-touch-icon.png' %}">
+  <link rel="manifest" href="{% static 'site.webmanifest' %}">
+  <meta name="theme-color" content="#0e1a2f">
+  <title>{% block title %}{{ HOTEL_NAME }} — {{ HOTEL_TAGLINE }}{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/fonts/remixicon.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260929-rbac-housekeeping">
+  <link rel="stylesheet" href="{% static 'css/ios.css' %}?v=20260927-logo-simple">
+  <link rel="stylesheet" href="{% static 'css/premium.css' %}?v=20260928-responsive-1">
+  {% block head %}{% endblock %}
+</head>
+<body class="guest-shell">
+<div class="scroll-progress" aria-hidden="true"></div>
+<nav class="site-nav">
+  <div class="container inner">
+    <a class="brand" href="{% url 'core:home' %}">
+      <span class="mark">A</span>
+      <span>
+        <span class="name">Aurelia Collection</span><br>
+        <span class="sub">10 sanctuaries · Cambodia</span>
+      </span>
+    </a>
+    <div class="nav-links">
+      <a href="{% url 'collection:property_list' %}">Hotels</a>
+      <a href="{% url 'hotel:room_list' %}">Rooms & Suites</a>
+      <a href="{% url 'hotel:room_list' %}#amenities">Experiences</a>
+      {% if user.is_authenticated %}<a href="{% url 'core:guest_dashboard' %}">My Stays</a>{% endif %}
+      {% if user.is_staff_role %}<a href="{% url 'pms:dashboard' %}">Front Desk</a>{% endif %}
+    </div>
+    <div class="nav-cta">
+      {% if user.is_authenticated %}
+        <a class="btn btn-gold" href="{% url 'hotel:room_list' %}">Book Now</a>
+        <span class="flex gap-2" style="color:#c7cede">
+          <span class="avatar" title="{{ user.username }}">{{ user.username|slice:":1"|upper }}</span>
+          <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}
+            <button class="btn btn-ghost btn-sm" style="color:#c7cede" type="submit">Sign out</button>
+          </form>
+        </span>
+      {% else %}
+        <a class="btn btn-ghost" style="color:#c7cede" href="{% url 'accounts:login' %}">Sign in</a>
+        <a class="btn btn-gold" href="{% url 'accounts:signup' %}">Create account</a>
+      {% endif %}
+    </div>
+    <button class="nav-burger" type="button" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false" data-mmenu><i class="ri-menu-3-line"></i></button>
+  </div>
+</nav>
+
+<div class="mm-scrim" data-mclose></div>
+<div class="mm-sheet" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Site menu">
+  <div class="mm-head">
+    <span class="mark">A</span><b>Aurelia Collection</b>
+    <button type="button" class="mm-x" data-mclose aria-label="Close menu"><i class="ri-close-line"></i></button>
+  </div>
+  <nav class="mm-links">
+    <a href="{% url 'collection:property_list' %}"><i class="ri-hotel-line"></i> Hotels</a>
+    <a href="{% url 'hotel:room_list' %}"><i class="ri-hotel-bed-line"></i> Rooms &amp; Suites</a>
+    <a href="{% url 'hotel:room_list' %}#amenities"><i class="ri-vip-diamond-line"></i> Experiences</a>
+    {% if user.is_authenticated %}<a href="{% url 'core:guest_dashboard' %}"><i class="ri-calendar-check-line"></i> My Stays</a>{% endif %}
+    {% if user.is_staff_role %}<a href="{% url 'pms:dashboard' %}"><i class="ri-dashboard-3-line"></i> Front Desk</a>{% endif %}
+  </nav>
+  <div class="mm-acts">
+    {% if user.is_authenticated %}
+      <a class="btn btn-gold btn-lg" href="{% url 'hotel:room_list' %}">Book Now</a>
+      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="btn btn-outline btn-lg" type="submit">Sign out</button></form>
+    {% else %}
+      <a class="btn btn-gold btn-lg" href="{% url 'accounts:signup' %}">Create account</a>
+      <a class="btn btn-outline btn-lg" href="{% url 'accounts:login' %}">Sign in</a>
+    {% endif %}
+  </div>
+</div>
+
+{% include "partials/welcome_offer.html" %}
+<div class="toasts" aria-live="polite" aria-atomic="true">{% include "partials/messages.html" %}</div>
+
+{% block content %}{% endblock %}
+
+<footer class="footer">
+  <div class="container">
+    <div class="cols">
+      <div>
+        <div class="brand" style="margin-bottom:14px">
+          <span class="mark">A</span>
+          <span><span class="name" style="color:#fff">Aurelia Collection</span><br><span class="sub">10 sanctuaries · Cambodia</span></span>
+        </div>
+        <p class="f-tag">Ten sanctuaries across the Kingdom of Wonder — riverside grand hotels, temple sanctuaries, island overwater villas and coastal coves, one standard of grace.</p>
+        <p class="mt-3">Preah Sisowath Quay, Phnom Penh, Cambodia<br>+855 23 999 888 · stay@aureliagrand.example</p>
+      </div>
+      <div>
+        <h5>Hotel</h5>
+        <ul>
+          <li><a href="{% url 'hotel:room_list' %}">Rooms & Suites</a></li>
+          <li><a href="{% url 'hotel:room_list' %}">Rates</a></li>
+          <li><a href="{% url 'core:home' %}#amenities">Amenities</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Guests</h5>
+        <ul>
+          <li><a href="{% url 'accounts:login' %}">Sign in</a></li>
+          <li><a href="{% url 'accounts:signup' %}">Create account</a></li>
+          {% if user.is_authenticated %}<li><a href="{% url 'core:guest_dashboard' %}">My stays</a></li>{% endif %}
+        </ul>
+      </div>
+      {% if user.is_staff_role %}
+      <div>
+        <h5>Staff</h5>
+        <ul>
+          <li><a href="{% url 'pms:dashboard' %}">PMS Dashboard</a></li>
+          <li><a href="{% url 'operations:room_board' %}">Room Board</a></li>
+          <li><a href="{% url 'operations:task_board' %}">Housekeeping</a></li>
+          <li><a href="{% url 'analytics:overview' %}">Analytics</a></li>
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    <div class="bottom">
+      <span>© {% now "Y" %} Aurelia Collection. All rights reserved.</span>
+      <span>Free cancellation up to 48h before arrival · Best rate guaranteed</span>
+    </div>
+  </div>
+</footer>
+<script src="{% static 'js/app.js' %}"></script>
+{% block scripts %}{% endblock %}
+<script src="{% static 'js/ios-nav.js' %}?v=20260927-pageshow-fix" defer></script>
+</body>
+</html>

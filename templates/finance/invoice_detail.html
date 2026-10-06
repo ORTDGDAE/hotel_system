@@ -1,0 +1,54 @@
+{% extends "staff_base.html" %}
+{% load static hotel_extras %}
+{% block title %}{{ invoice.number }}{% endblock %}
+{% block content %}
+<div class="pms-head no-print">
+  <div><h1>Folio {{ invoice.number }}</h1><div class="sub">Booking <a href="{{ booking.get_absolute_url }}" class="mono">{{ booking.code }}</a></div></div>
+  <button class="btn btn-outline" onclick="window.print()"><i class="ri-printer-line" aria-hidden="true"></i> Print</button>
+</div>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <div class="brand"><img class="invoice-logo" src="{% static 'img/logo-simple.png' %}" alt="Aurelia Collection logo"><span><span class="name" style="color:var(--navy)">Aurelia Grand</span><br><span class="sub" style="color:#8a6d2f">Phnom Penh · Riverside</span></span></div>
+      <p class="tiny muted mt-2">Preah Sisowath Quay, Phnom Penh, Cambodia<br>VAT TIN 000 123 456 · stay@aureliagrand.example</p>
+    </div>
+    <div class="right">
+      <h1>Tax Invoice</h1>
+      <p class="mono small"><b>{{ invoice.number }}</b></p>
+      <p class="tiny muted">Issued {{ invoice.issued_at|date:"d M Y H:i" }}</p>
+      <p class="mt-1"><span class="badge badge-{% if invoice.status == 'paid' %}success{% elif invoice.status == 'open' %}warning{% else %}info{% endif %}">{{ invoice.get_status_display }}</span></p>
+    </div>
+  </div>
+  <div class="grid mb-4" style="grid-template-columns:1fr 1fr">
+    <div><div class="tiny muted">Billed to</div><b>{{ booking.guest_name }}</b><div class="small muted">{{ booking.guest_email|default:"—" }}<br>{{ booking.guest_phone|default:"—" }}</div></div>
+    <div><div class="tiny muted">Stay</div><b>{{ booking.room_type.name }} × {{ booking.rooms_count }}</b>
+      <div class="small muted">{{ booking.check_in|date:"d M Y" }} <i class="ri-arrow-right-line" aria-hidden="true"></i> {{ booking.check_out|date:"d M Y" }} · {{ booking.nights }} nights</div></div>
+  </div>
+  <table class="data">
+    <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+      {% for night in booking.rate_details_parsed %}
+      <tr><td>Accommodation · {{ night.date|night_label }}</td><td class="num">{{ booking.rooms_count }}</td><td class="num">{{ night.rate|money }}</td>
+      <td class="num">{{ night.rate|multiply:booking.rooms_count|money }}</td></tr>
+      {% endfor %}
+      <tr><td colspan="3" class="right muted">Rooms subtotal</td><td class="num">{{ invoice.subtotal|money }}</td></tr>
+      {% if invoice.service %}<tr><td colspan="3" class="right muted">Service charge</td><td class="num">{{ invoice.service|money }}</td></tr>{% endif %}
+      <tr><td colspan="3" class="right muted">{{ tax_label }}</td><td class="num">{{ invoice.tax|money }}</td></tr>
+      <tr style="border-top:2px solid var(--navy)"><td colspan="3" class="right"><b>Total</b></td><td class="num" style="font-size:17px"><b>{{ invoice.total|money }}</b></td></tr>
+    </tbody>
+  </table>
+  {% if is_legacy_snapshot %}<p class="tiny muted right">This folio preserves the contracted pricing snapshot from the original booking.</p>{% endif %}
+  <h3 class="card-title mt-4 mb-2">Payments</h3>
+  <table class="data">
+    <thead><tr><th>Date</th><th>Method</th><th>Note</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+    {% for p in payments %}
+      <tr><td>{{ p.created_at|date:"d M Y H:i" }}</td><td>{{ p.get_method_display }}</td><td class="small">{{ p.note|default:"—" }}</td>
+      <td class="num" style="color:{% if p.is_refund %}var(--red){% else %}var(--green){% endif %}">{% if p.is_refund %}−{% endif %}{{ p.amount|money }}</td></tr>
+    {% empty %}<tr><td colspan="4" class="muted small">No payments recorded.</td></tr>{% endfor %}
+    <tr><td colspan="3" class="right"><b>Balance due</b></td><td class="num"><b>{{ invoice.balance|money }}</b></td></tr>
+    </tbody>
+  </table>
+  <p class="tiny muted mt-4 center">Thank you for staying at Aurelia Grand. This is a computer-generated folio.</p>
+</div>
+{% endblock %}

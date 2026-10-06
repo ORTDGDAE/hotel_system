@@ -1,0 +1,159 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}{{ booking.code }}{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div class="flex gap-3">
+    <a href="{% url 'pms:reservations' %}" class="btn btn-ghost btn-sm"><i class="ri-arrow-left-line" aria-hidden="true"></i></a>
+    <div>
+      <h1 class="flex gap-2">{{ booking.guest_name }} <span class="badge badge-{{ booking.status_tone }}">{{ booking.get_status_display }}</span></h1>
+      <div class="sub mono">{{ booking.code }} · {{ booking.get_source_display }} · created {{ booking.created_at|date:"d M Y H:i" }}{% if booking.created_by %} by {{ booking.created_by.get_full_name|default:booking.created_by.username }}{% endif %}</div>
+    </div>
+  </div>
+  <div class="flex gap-2">
+    {% if invoice %}<a class="btn btn-outline btn-sm" href="{% url 'finance:invoice_detail' invoice.pk %}"><i class="ri-file-text-line" aria-hidden="true"></i> Folio {{ invoice.number }}</a>{% endif %}
+    {% if booking.status == 'checked_in' %}
+      <form method="post" action="{% url 'pms:check_out' booking.pk %}" data-confirm="Check out {{ booking.guest_name }}? Rooms will be marked dirty and the folio settled.">
+        {% csrf_token %}<button class="btn btn-primary" type="submit">Check out</button></form>
+    {% endif %}
+    {% if booking.status == 'confirmed' %}
+      <form method="post" action="{% url 'pms:cancel' booking.pk %}" data-confirm="Cancel reservation {{ booking.code }}? Refunds/fees are applied automatically.">
+        {% csrf_token %}<input type="hidden" name="reason" value="Cancelled at front desk">
+        <button class="btn btn-danger" type="submit">Cancel reservation</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="dash-grid rv" style="grid-template-columns:1.5fr 1fr">
+  <div class="grid">
+    <div class="card card-pad">
+      <h3 class="card-title mb-3">Stay details</h3>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
+        <div><div class="tiny muted">Room type</div><b>{{ booking.room_type.name }} × {{ booking.rooms_count }}</b></div>
+        <div><div class="tiny muted">Check-in</div><b>{{ booking.check_in|date:"D d M Y" }}</b><div class="tiny">from 14:00</div></div>
+        <div><div class="tiny muted">Check-out</div><b>{{ booking.check_out|date:"D d M Y" }}</b><div class="tiny">by 12:00</div></div>
+        <div><div class="tiny muted">Nights</div><b>{{ booking.nights }}</b></div>
+        <div><div class="tiny muted">Guests</div><b>{{ booking.adults }} adult{{ booking.adults|pluralize }}{% if booking.children %} · {{ booking.children }} child{{ booking.children|pluralize }}{% endif %}</b></div>
+        <div><div class="tiny muted">Assigned rooms</div>
+          {% for r in booking.assigned_rooms %}<span class="badge badge-info no-dot">{{ r.number }}</span>{% empty %}<span class="muted">Not assigned</span>{% endfor %}</div>
+      </div>
+      {% if booking.special_requests %}
+      <div class="card card-pad mt-3" style="background:var(--gold-soft);border-color:#ead9ac">
+        <b class="small"><i class="ri-star-line" aria-hidden="true"></i> Special requests</b>
+        <p class="small mt-1">{{ booking.special_requests }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if checkin_form %}
+    <div class="card">
+      <div class="card-head"><h3><i class="ri-key-2-line" aria-hidden="true"></i> Check in now</h3><span class="badge badge-info">Arrived today</span></div>
+      <div class="card-pad">
+        <form method="post" action="{% url 'pms:check_in' booking.pk %}">
+          {% csrf_token %}
+          <p class="small muted mb-2">Select {{ booking.rooms_count }} vacant & clean room{{ booking.rooms_count|pluralize }} of type <b>{{ booking.room_type.name }}</b>:</p>
+          {% if free_rooms %}
+            <div class="checkgrid">
+              {% for room in free_rooms %}
+              <label><input type="checkbox" name="rooms" value="{{ room.pk }}"> Room {{ room.number }} <span class="tiny muted">· fl {{ room.floor }}</span></label>
+              {% endfor %}
+            </div>
+            <button class="btn btn-success mt-3" type="submit">Complete check-in</button>
+          {% else %}
+            <div class="badge badge-danger">No vacant & clean {{ booking.room_type.name }} rooms. Send housekeeping first <i class="ri-arrow-right-line" aria-hidden="true"></i></div>
+            <a class="btn btn-outline btn-sm mt-2" href="{% url 'operations:task_board' %}">Open housekeeping board</a>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-head"><h3>Rate breakdown (contracted at booking)</h3></div>
+      <div class="card-pad">
+        {% for night in booking.rate_details_parsed %}
+          <div class="rate-night"><span>{{ night.date|night_label }}</span><b>{{ night.rate|money:booking.currency }}</b></div>
+        {% endfor %}
+        <hr style="border:none;border-top:1px solid var(--line);margin:10px 0">
+        {% if booking.discount_total %}<div class="summary-line welcome-discount-line"><span><i class="ri-coupon-3-line" aria-hidden="true"></i> Welcome offer · 10% off</span><b>−{{ booking.discount_total|money }}</b></div>{% endif %}
+        <div class="summary-line"><span>Rooms subtotal · {{ booking.rooms_count }} × {{ booking.nights }} nights</span><b>{{ booking.nightly_total|money }}</b></div>
+        {% if booking.service_total %}<div class="summary-line"><span>Service charge</span><b>{{ booking.service_total|money }}</b></div>{% endif %}
+        <div class="summary-line"><span>Tax (5%)</span><b>{{ booking.tax_total|money }}</b></div>
+        <div class="summary-line total"><span>Grand total</span><b>{{ booking.grand_total|money }}</b></div>
+        {% if booking.status == 'cancelled' %}
+          <div class="summary-line"><span>Cancellation fee retained</span><b>{{ booking.cancellation_fee|money }}</b></div>
+          <p class="tiny muted">{{ booking.cancellation_reason }}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card" id="payments">
+      <div class="card-head"><h3>Payments & deposits</h3>
+        {% if invoice %}<span class="small muted">Balance due: <b>{{ invoice.balance|money }}</b></span>{% endif %}</div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>When</th><th>Method</th><th>Note</th><th>By</th><th class="num">Amount</th></tr></thead>
+        <tbody>
+        {% for p in payments %}
+          <tr>
+            <td class="nowrap">{{ p.created_at|date:"d M Y H:i" }}</td>
+            <td><span class="badge badge-muted no-dot">{{ p.get_method_display }}</span></td>
+            <td class="small">{{ p.note|default:p.reference|default:"—" }}</td>
+            <td class="small">{{ p.created_by.get_full_name|default:"system" }}</td>
+            <td class="num" style="color:{% if p.is_refund %}var(--red){% else %}var(--green){% endif %};font-weight:700">
+              {% if p.is_refund %}−{% endif %}{{ p.amount|money }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="muted small center" style="padding:20px">No payments recorded yet</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      {% if booking.status != 'cancelled' %}
+      <div class="card-pad" style="border-top:1px solid var(--line)">
+        {% if invoice and invoice.balance > 0 %}
+          <b class="small">Record a payment or deposit</b>
+          <p class="tiny muted mt-1">Enter any amount up to the balance due. A partial amount records a deposit; the remaining balance can be collected later.</p>
+          <form method="post" action="{% url 'pms:payment' booking.pk %}" class="form-row mt-2" style="align-items:end">
+            {% csrf_token %}
+            <div class="field" style="margin:0"><label>Amount</label><input type="number" step="0.01" min="0.01" max="{{ invoice.balance }}" name="amount" value="{{ invoice.balance }}" required></div>
+            <div class="field" style="margin:0"><label>Method</label>
+              <select name="method"><option value="cash">Cash</option><option value="card">Card</option><option value="bank_transfer">Bank transfer</option><option value="wallet">E-wallet</option></select></div>
+            <div class="field" style="margin:0"><label>Note</label><input type="text" name="note" placeholder="e.g. deposit, minibar, late checkout…"></div>
+            <button class="btn btn-primary" type="submit">Record</button>
+          </form>
+        {% else %}
+          <p class="small muted mb-0"><i class="ri-checkbox-circle-line" aria-hidden="true"></i> This folio is paid in full. No additional deposit is due.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card card-pad">
+      <h3 class="card-title mb-2">Guest</h3>
+      <div class="flex gap-2 mb-2"><span class="avatar" style="width:44px;height:44px;font-size:16px">{{ booking.guest_name|slice:":1" }}</span>
+        <div><b>{{ booking.guest_name }}</b><div class="tiny muted">{{ booking.guest.email|default:booking.guest_email|default:"no email" }}</div></div>
+      </div>
+      <div class="tiny muted"><i class="ri-phone-line" aria-hidden="true"></i> {{ booking.guest_phone|default:"—" }}</div>
+      {% if booking.guest %}<div class="tiny muted mt-1">Registered account: @{{ booking.guest.username }}</div>{% endif %}
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Timeline</h3></div>
+      <div class="card-pad">
+        <div class="timeline">
+          <div class="ev"><span class="dot"><i class="ri-edit-line" aria-hidden="true"></i></span><span><b class="small">Reservation created</b><span class="tiny muted" style="display:block">{{ booking.created_at|date:"d M Y H:i" }} · {{ booking.get_source_display }}</span></span></div>
+          {% if booking.status == 'checked_in' or booking.status == 'checked_out' %}
+          <div class="ev"><span class="dot"><i class="ri-key-2-line" aria-hidden="true"></i></span><span><b class="small">Checked in</b><span class="tiny muted" style="display:block">{% for r in booking.room_assignments.all %}Room {{ r.room.number }}{% if not forloop.last %}, {% endif %}{% endfor %}</span></span></div>
+          {% endif %}
+          {% if booking.status == 'checked_out' %}
+          <div class="ev"><span class="dot"><i class="ri-emotion-happy-line" aria-hidden="true"></i></span><span><b class="small">Checked out</b><span class="tiny muted" style="display:block">Folio settled · housekeeping queued</span></span></div>
+          {% endif %}
+          {% if booking.status == 'cancelled' %}
+          <div class="ev"><span class="dot"><i class="ri-close-line" aria-hidden="true"></i></span><span><b class="small">Cancelled</b><span class="tiny muted" style="display:block">Fee {{ booking.cancellation_fee|money }} · {{ booking.cancellation_reason }}</span></span></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

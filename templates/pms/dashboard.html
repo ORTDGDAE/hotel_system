@@ -1,0 +1,125 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div>
+    <h1>Good {% if now.hour < 12 %}morning{% elif now.hour < 17 %}afternoon{% else %}evening{% endif %}, {{ user.first_name|default:user.username }} <i class="ri-emotion-happy-line" aria-hidden="true"></i></h1>
+    <div class="sub">{{ today|date:"l, j F Y" }} · {{ active_property.name|default:"All properties — chain view" }}</div>
+  </div>
+  <div class="flex gap-2">
+    <a class="btn btn-outline btn-sm" href="{% url 'pms:calendar' %}"><i class="ri-calendar-event-line" aria-hidden="true"></i> Calendar</a>
+    <a class="btn btn-gold btn-sm" href="{% url 'pms:booking_new' %}"><i class="ri-add-line" aria-hidden="true"></i> New reservation</a>
+  </div>
+</div>
+
+<div class="kpi-grid mb-4">
+  <div class="kpi"><span class="kpi-accent"></span>
+    <div class="kpi-label">Occupancy tonight</div>
+    <div class="kpi-value" data-countup="{{ occupancy.pct }}" data-decimals="1" data-suffix="%">{{ occupancy.pct }}%</div>
+    <div class="kpi-sub">{{ occupancy.occupied }} of {{ occupancy.total }} sellable rooms</div>
+    <div class="progress mt-2"><div style="width:{{ occupancy.pct|pct_bar }}%"></div></div>
+  </div>
+  <div class="kpi"><span class="kpi-accent blue"></span>
+    <div class="kpi-label">Arrivals today</div>
+    <div class="kpi-value" data-countup="{{ arrivals|length }}">{{ arrivals|length }}</div>
+    <div class="kpi-sub">{{ in_house|length }} currently in-house</div>
+  </div>
+  <div class="kpi"><span class="kpi-accent green"></span>
+    <div class="kpi-label">Departures today</div>
+    <div class="kpi-value" data-countup="{{ departures|length }}">{{ departures|length }}</div>
+    <div class="kpi-sub">{{ dirty_rooms }} rooms awaiting cleaning</div>
+  </div>
+  <div class="kpi"><span class="kpi-accent red"></span>
+    <div class="kpi-label">Revenue · 7 days</div>
+    <div class="kpi-value" data-countup="{{ revenue_week }}" data-decimals="2" data-prefix="$" data-group="1">{{ revenue_week|money }}</div>
+    <div class="kpi-sub">{{ open_tasks }} open housekeeping tasks</div>
+  </div>
+</div>
+
+<div class="dash-grid">
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><h3>Arrivals — expected today</h3><a class="btn btn-ghost btn-sm" href="{% url 'pms:reservations' %}?status=confirmed">All reservations <i class="ri-arrow-right-line" aria-hidden="true"></i></a></div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Guest</th><th>Room</th><th>Nights</th><th class="num">Total</th><th>Source</th><th class="right">Action</th></tr></thead>
+        <tbody>
+        {% for b in arrivals %}
+          <tr>
+            <td><a href="{{ b.get_absolute_url }}"><b>{{ b.guest_name }}</b></a><div class="tiny muted">{{ b.code }}</div></td>
+            <td>{{ b.room_type.name }} × {{ b.rooms_count }}</td>
+            <td>{{ b.nights }}</td>
+            <td class="num">{{ b.grand_total|money }}</td>
+            <td><span class="badge badge-muted no-dot">{{ b.get_source_display }}</span></td>
+            <td class="right"><a class="btn btn-success btn-sm" href="{{ b.get_absolute_url }}">Check in <i class="ri-arrow-right-line" aria-hidden="true"></i></a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="muted center" style="padding:26px">No arrivals expected today <i class="ri-sparkling-2-line" aria-hidden="true"></i></td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>Departures — due today</h3><a class="btn btn-ghost btn-sm" href="{% url 'operations:task_board' %}">Housekeeping <i class="ri-arrow-right-line" aria-hidden="true"></i></a></div>
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Guest</th><th>Room(s)</th><th class="num">Balance</th><th class="right">Action</th></tr></thead>
+        <tbody>
+        {% for b in departures %}
+          <tr>
+            <td><a href="{{ b.get_absolute_url }}"><b>{{ b.guest_name }}</b></a><div class="tiny muted">{{ b.code }} · since {{ b.check_in|date:"d M" }}</div></td>
+            <td>{% for r in b.assigned_rooms %}<span class="badge badge-info no-dot">{{ r.number }}</span> {% empty %}<span class="muted tiny">—</span>{% endfor %}</td>
+            <td class="num">{% if b.invoice %}{{ b.invoice.balance|money }}{% else %}—{% endif %}</td>
+            <td class="right">
+              {% if b.invoice and b.invoice.balance > 0 %}
+                <a class="btn btn-gold btn-sm" href="{{ b.get_absolute_url }}#payments">Record deposit</a>
+              {% else %}
+                <span class="badge badge-success no-dot" style="margin-right:6px">Paid in full</span>
+              {% endif %}
+              <a class="btn btn-outline btn-sm" href="{{ b.get_absolute_url }}">Check out <i class="ri-arrow-right-line" aria-hidden="true"></i></a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="muted center" style="padding:26px">No departures due today</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><h3>In-house guests</h3><span class="badge badge-info">{{ in_house|length }}</span></div>
+      <div style="max-height:340px;overflow-y:auto">
+      {% for b in in_house %}
+        <a class="flex gap-2" style="padding:11px 20px;border-bottom:1px solid var(--line-2)" href="{{ b.get_absolute_url }}">
+          <span class="avatar">{{ b.guest_name|slice:":1" }}</span>
+          <span class="grow" style="min-width:0">
+            <b style="font-size:13.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.guest_name }}</b>
+            <span class="tiny muted">{% for r in b.assigned_rooms %}Room {{ r.number }}{% if not forloop.last %}, {% endif %}{% endfor %} · out {{ b.check_out|date:"D d M" }}</span>
+          </span>
+        </a>
+      {% empty %}
+        <div class="empty-state small">No guests in-house</div>
+      {% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Latest activity</h3></div>
+      <div class="card-pad">
+        <div class="timeline">
+          {% for b in recent %}
+          <div class="ev">
+            <span class="dot">{% if b.status == 'checked_out' %}<i class="ri-emotion-happy-line" aria-hidden="true"></i>{% elif b.status == 'checked_in' %}<i class="ri-key-2-line" aria-hidden="true"></i>{% elif b.status == 'cancelled' %}<i class="ri-close-line" aria-hidden="true"></i>{% else %}<i class="ri-edit-line" aria-hidden="true"></i>{% endif %}</span>
+            <span>
+              <a href="{{ b.get_absolute_url }}"><b class="small">{{ b.guest_name }}</b></a>
+              <span class="tiny muted" style="display:block">{{ b.get_status_display }} · {{ b.room_type.name }} · {{ b.created_at|timesince }} ago</span>
+            </span>
+          </div>
+          {% empty %}<div class="muted small">No activity yet</div>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+# Render Blueprint for the Aurelia Collection.
+#
+# ROOT DIRECTORY: the Django project lives at the repository ROOT (manage.py,
+# requirements.txt, render.yaml and render_start.sh are all top-level), so the
+# Render "Root Directory" setting must be left BLANK. Do not set it to
+# hotel_pms/ or PP_latest/ — those folders no longer exist in the repo.
+#
+# !! READ BEFORE USING THIS FILE — DUPLICATE SERVICES !!
+# A web service for this app already exists and was created MANUALLY
+# (New -> Web Service), along with its own PostgreSQL instance.
+#
+# Running "New -> Blueprint" against this file would provision a SECOND web
+# service named `aurelia-collection` and a SECOND database named
+# `aurelia-postgres`, leaving two services and two databases — one of them
+# empty, both billable, and the DNS name ambiguous.
+#
+# This file is therefore kept as executable documentation of the intended
+# configuration, and as the starting point if the service is ever rebuilt from
+# scratch. To deploy, copy buildCommand / startCommand / healthCheckPath /
+# envVars below into the EXISTING manual service instead of applying the
+# Blueprint. See DEPLOY-RENDER.md for the exact values.
+services:
+  - type: web
+    name: aurelia-collection
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: sh render_start.sh
+    healthCheckPath: /healthz/
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aurelia-postgres
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com"
+      - key: DATABASE_SSL_REQUIRE
+        value: "1"
+      # Demo seeding is OFF on purpose: the Render database is populated by
+      # importing aurelia_collection_postgresql_latest.sql, which TRUNCATEs the
+      # tables first. Seeding beforehand is wasted work that the import then
+      # discards. Flip to "1" only to self-seed an empty database with the
+      # 10-hotel demo dataset (e.g. before the import has been run).
+      - key: SEED_DEMO
+        value: "0"
+
+databases:
+  - name: aurelia-postgres
+    plan: free
+    databaseName: aurelia
+    user: aurelia
