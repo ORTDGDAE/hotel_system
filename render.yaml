@@ -1,3 +1,24 @@
+# Render Blueprint for the Aurelia Collection.
+#
+# ROOT DIRECTORY: the Django project lives at the repository ROOT (manage.py,
+# requirements.txt, render.yaml and render_start.sh are all top-level), so the
+# Render "Root Directory" setting must be left BLANK. Do not set it to
+# hotel_pms/ or PP_latest/ — those folders no longer exist in the repo.
+#
+# !! READ BEFORE USING THIS FILE — DUPLICATE SERVICES !!
+# A web service for this app already exists and was created MANUALLY
+# (New -> Web Service), along with its own PostgreSQL instance.
+#
+# Running "New -> Blueprint" against this file would provision a SECOND web
+# service named `aurelia-collection` and a SECOND database named
+# `aurelia-postgres`, leaving two services and two databases — one of them
+# empty, both billable, and the DNS name ambiguous.
+#
+# This file is therefore kept as executable documentation of the intended
+# configuration, and as the starting point if the service is ever rebuilt from
+# scratch. To deploy, copy buildCommand / startCommand / healthCheckPath /
+# envVars below into the EXISTING manual service instead of applying the
+# Blueprint. See DEPLOY-RENDER.md for the exact values.
 services:
   - type: web
     name: aurelia-collection

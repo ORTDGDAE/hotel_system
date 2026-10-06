@@ -81,19 +81,75 @@ A new guest signup fails immediately; a new booking fails immediately.
 `hotel_room` is worse — ids 1–1500 are free, so new rooms insert successfully
 for weeks and then start colliding.
 
-**Fix applied:** an identity-repair block appended inside the dump's transaction,
-immediately before `COMMIT;`. It is generated from `MAX(id)` per table via
-`pg_get_serial_sequence()`, so it stays correct if the export is regenerated,
-and re-running it is harmless:
+**Fix applied — as a separate companion file.**
+`aurelia_collection_postgresql_latest.sql` is **byte-for-byte unmodified**
+(md5 `8e37de4be0b91b5e2a16d291abb8d9b4`, identical to the original commit).
+The repair ships alongside it as **`aurelia_collection_postgresql_sequences.sql`**,
+run as a second step after the data import. It derives each value from `MAX(id)`
+via `pg_get_serial_sequence()`, so it stays correct if the export is regenerated,
+and re-running it is harmless — it only ever moves a sequence forward:
 
 ```sql
 SELECT setval(pg_get_serial_sequence('"accounts_user"', 'id'),
               COALESCE((SELECT MAX("id") FROM "accounts_user"), 1), true);
 ```
 
-No existing line of the dump was modified — the block is purely additive.
+Keeping the two files separate means the validated dump stays canonical and
+diffable, and the repair can be skipped or re-applied independently.
 
-## Render settings to paste (manual Web Service)
+## Final repository structure
+
+Verified on a **fresh clone** of the pushed branch, in a clean virtualenv, with
+no leftover build artifacts:
+
+```
+/                               <- Render Root Directory = BLANK
+├── manage.py                   <- required at root
+├── requirements.txt            <- required at root
+├── render.yaml                 <- Blueprint (documentation; see duplicate warning)
+├── render_start.sh             <- migrate -> collectstatic -> gunicorn on $PORT
+├── Dockerfile  docker-compose.yml  docker/entrypoint.sh
+├── config/                     <- Django project package (settings, urls, wsgi, asgi)
+├── accounts/  analytics/  bookings/  core/  finance/  hotel/  operations/
+│                               <- apps, each with migrations/ intact
+├── templates/                  <- 36 templates
+├── static/                     <- source static assets (img/, css/, js/)
+├── aurelia_collection_postgresql_latest.sql      <- UNMODIFIED data dump
+├── aurelia_collection_postgresql_sequences.sql   <- companion sequence repair
+├── navicat/                    <- MySQL/SQLite export kit + Django fixtures
+├── scripts/                    <- export, migration and deck-building utilities
+├── ci/github-actions-ci.yml    <- parked CI workflow (see ci/README.md)
+├── .gitignore  .gitattributes
+└── README.md  CHANGELOG.md  QA-REPORT.md  DEPLOY-RENDER.md
+```
+
+`staticfiles/` (collectstatic output), `media/`, `aurelia_collection.db` and
+`__pycache__/` are generated at runtime and gitignored — Render rebuilds them.
+
+**On "media files":** nothing is missing. The project declares `MEDIA_ROOT` but
+contains **no `FileField` or `ImageField`** anywhere, so it stores no
+user-uploaded media. Every image the site serves is a versioned static asset
+under `static/img/`, collected by WhiteNoise. `media/` is created on demand if
+uploads are ever added.
+
+## Do not create duplicate services
+
+A web service and a PostgreSQL instance for this app **already exist**, created
+manually. `render.yaml` declares a service named `aurelia-collection` and a
+database named `aurelia-postgres` — running **New → Blueprint** would create a
+*second* of each: two web services, two databases, one of them empty, both
+billable, with an ambiguous DNS name.
+
+The Blueprint file is kept as executable documentation and as a rebuild
+starting point. To deploy, copy its `buildCommand`, `startCommand`,
+`healthCheckPath` and `envVars` into the **existing** manual service. A header
+comment in `render.yaml` says the same thing, so the warning travels with the
+file.
+
+The repository declares exactly one web service and one database; nothing in
+this change provisions additional infrastructure.
+
+
 
 | Field | Value |
 |---|---|
@@ -135,21 +191,32 @@ the dump is data-only and assumes the tables exist.
 curl https://<your-service>.onrender.com/healthz/
 #    -> {"status": "ok", "database": true}
 
-# 2. import (Render Postgres allows external connections; use the EXTERNAL URL)
+# 2. import the data (Render Postgres allows external connections; use the
+#    EXTERNAL Database URL, not the internal one)
 psql "<EXTERNAL Database URL>" -v ON_ERROR_STOP=1 \
      -f aurelia_collection_postgresql_latest.sql
 
-# 3. verify the sequence repair took effect
+# 3. REQUIRED second step — repair the identity sequences (see defect #3 above)
+psql "<EXTERNAL Database URL>" -v ON_ERROR_STOP=1 \
+     -f aurelia_collection_postgresql_sequences.sql
+
+# 4. verify
 psql "<EXTERNAL Database URL>" -c \
-  "SELECT last_value FROM accounts_user_id_seq; SELECT count(*) FROM hotel_room;"
-#    -> last_value must be 56, count must be 369
+  "SELECT last_value FROM accounts_user_id_seq;"   # -> 56
+psql "<EXTERNAL Database URL>" -c \
+  "SELECT last_value FROM hotel_room_id_seq;"      # -> 1851
+psql "<EXTERNAL Database URL>" -c \
+  "SELECT count(*) FROM hotel_room;"               # -> 369
 ```
 
-`-v ON_ERROR_STOP=1` matters: without it `psql` reports errors and keeps going,
-leaving a half-loaded database that looks successful.
+Step 3 is not optional. Skipping it leaves every sequence at 1 and the first
+new booking or signup written through the app fails with a duplicate-key error.
 
-The dump truncates first, so re-running it is idempotent — but it will discard
-anything created on Render since the last import.
+`-v ON_ERROR_STOP=1` matters on both files: without it `psql` reports errors and
+keeps going, leaving a half-loaded database that looks successful.
+
+The dump truncates first, so re-running steps 2 and 3 is idempotent — but it
+will discard anything created on Render since the last import.
 
 ## Verified locally before handing over
 
