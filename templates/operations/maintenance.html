@@ -1,0 +1,50 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}Maintenance{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div><h1>Maintenance</h1><div class="sub">High & critical issues automatically block the room from inventory</div></div>
+</div>
+
+<div class="tabs">
+  <a class="tab {% if tab == 'open' %}active{% endif %}" href="?tab=open">Open</a>
+  <a class="tab {% if tab == 'all' %}active{% endif %}" href="?tab=all">All</a>
+</div>
+
+<div class="dash-grid" style="grid-template-columns:1.5fr 1fr">
+  <div class="card"><div class="table-wrap"><table class="data">
+    <thead><tr><th>Room</th><th>Issue</th><th>Severity</th><th>Status</th><th>Reported</th><th class="right"></th></tr></thead>
+    <tbody>
+    {% for m in items %}
+      <tr>
+        <td><b>{{ m.room.number }}</b></td>
+        <td>{{ m.title }}<div class="tiny muted">{{ m.description|truncatechars:60 }}</div></td>
+        <td><span class="badge badge-{% if m.severity == 'critical' %}danger{% elif m.severity == 'high' %}warning{% else %}muted{% endif %} no-dot">{{ m.get_severity_display }}</span></td>
+        <td><span class="badge badge-{{ m.status_tone }}">{{ m.get_status_display }}</span></td>
+        <td class="tiny">{{ m.created_at|date:"d M Y" }} · {{ m.reported_by.get_full_name|default:"—" }}</td>
+        <td class="right">{% if m.status != 'resolved' %}
+          <form method="post" action="{% url 'operations:maintenance_resolve' m.pk %}">{% csrf_token %}
+          <button class="btn btn-outline btn-sm" type="submit">Resolve</button></form>{% endif %}</td>
+      </tr>
+    {% empty %}<tr><td colspan="6"><div class="empty-state"><div class="ic"><i class="ri-tools-line" aria-hidden="true"></i></div>No maintenance issues — everything is running smoothly.</div></td></tr>{% endfor %}
+    </tbody>
+  </table></div></div>
+
+  <div class="card">
+    <div class="card-head"><h3>Report an issue</h3></div>
+    <div class="card-pad">
+      <form method="post" action="{% url 'operations:maintenance_create' %}">
+        {% csrf_token %}
+        <div class="field"><label>Room</label>
+          <select name="room" required>{% for r in rooms %}<option value="{{ r.pk }}">{{ r.number }} · {{ r.room_type.name }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Title</label><input type="text" name="title" required placeholder="e.g. AC not cooling"></div>
+        <div class="field"><label>Description</label><textarea name="description" rows="3"></textarea></div>
+        <div class="field"><label>Severity</label>
+          <select name="severity">{% for value, label in severity_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+          <p class="helptext">High & critical severities block the room from being sold.</p></div>
+        <button class="btn btn-primary" type="submit">Log request</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

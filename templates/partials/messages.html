@@ -1,0 +1,8 @@
+{% if messages %}
+  {% for message in messages %}
+    <div class="toast {{ message.tags }}" role="{% if message.tags == 'danger' or message.tags == 'error' %}alert{% else %}status{% endif %}">
+      <span>{% if message.tags == 'success' %}<i class="ri-checkbox-circle-fill" aria-hidden="true"></i>{% elif message.tags == 'danger' or message.tags == 'error' %}<i class="ri-forbid-line" aria-hidden="true"></i>{% elif message.tags == 'warning' %}<i class="ri-error-warning-line" aria-hidden="true"></i>{% else %}<i class="ri-information-line" aria-hidden="true"></i>{% endif %}</span>
+      <span>{{ message }}</span>
+    </div>
+  {% endfor %}
+{% endif %}

@@ -1,0 +1,36 @@
+# Line-ending policy.
+#
+# Render starts this app with `sh render_start.sh`. If that file ever gets
+# committed with Windows CRLF endings, the build fails with a confusing
+# "render_start.sh: not found" / syntax error even though the file exists.
+# This project is edited on Windows (start.bat, install.bat), so pin it here.
+
+* text=auto eol=lf
+
+# Must stay LF for Linux/Render
+*.sh   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.sql  text eol=lf
+*.html text eol=lf
+*.css  text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+
+# Windows batch files need CRLF
+*.bat text eol=crlf
+
+# Binary — never touch line endings
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.gif   binary
+*.ico   binary
+*.db    binary
+*.zip   binary
+*.woff  binary
+*.woff2 binary

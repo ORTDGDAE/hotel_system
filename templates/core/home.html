@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% load static hotel_extras %}
+{% block content %}
+<section class="hero">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <span class="hero-orb o1" aria-hidden="true"></span>
+  <span class="hero-orb o2" aria-hidden="true"></span>
+  <div class="container">
+    <span class="eyebrow">Five-star riverside luxury · Phnom Penh</span>
+    <h1>
+      <span class="mask-line"><span style="--d:250ms">Where the Mekong meets</span></span>
+      <span class="mask-line"><span style="--d:420ms"><span class="gold-text rotator" id="rotator" data-words="timeless hospitality.|quiet luxury.|your riverside home.|the art of stay."><span>timeless hospitality.</span></span></span></span>
+    </h1>
+    <p class="lede">120 rooms and suites over the Tonlé Sap — three signature restaurants, an infinity pool and the award-winning Seraya Spa, minutes from the Royal Palace.</p>
+    <div class="hero-cta-row flex gap-3 mt-4">
+      <a class="btn btn-gold btn-lg" href="{% url 'hotel:room_list' %}">Explore rooms & rates</a>
+      <a class="btn btn-lg" style="background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.22)" href="#amenities">Discover the hotel</a>
+    </div>
+  </div>
+  <div class="scroll-cue">Scroll<div class="mouse"></div></div>
+</section>
+
+<div class="container">
+  <div class="search-dock">
+    <form method="get" action="{% url 'hotel:room_list' %}" data-datepair data-guestpair>
+      <div class="field" style="margin:0">
+        <label>Check-in</label>
+        <input type="date" name="check_in" value="{{ today|date:'Y-m-d' }}" min="{{ today|date:'Y-m-d' }}" required>
+      </div>
+      <div class="field" style="margin:0">
+        <label>Check-out</label>
+        <input type="date" name="check_out" value="{{ tomorrow|date:'Y-m-d' }}" min="{{ day_after|date:'Y-m-d' }}" required>
+      </div>
+      <div class="field" style="margin:0">
+        <label>Rooms</label>
+        <select name="rooms">{% for i in "12345" %}<option value="{{ i }}">{{ i }}</option>{% endfor %}</select>
+      </div>
+      <div class="field" style="margin:0">
+        <label>Adults</label>
+        <select name="adults"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+      </div>
+      <div class="field" style="margin:0">
+        <label>Children</label>
+        <select name="children"><option selected>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select>
+      </div>
+      <button class="btn btn-gold btn-lg" type="submit">Search rooms</button>
+    </form>
+  </div>
+</div>
+
+<section class="stats-band" style="margin-top:72px;padding:44px 0">
+  <div class="container">
+    <div class="flex flex-wrap" style="justify-content:space-between;gap:28px;text-align:center">
+      <div class="stat grow"><div class="num" data-countup="120">120</div><div class="lbl">Rooms & Suites</div></div>
+      <div class="stat grow"><div class="num" data-countup="3">3</div><div class="lbl">Restaurants</div></div>
+      <div class="stat grow"><div class="num" data-countup="98" data-suffix="%">98%</div><div class="lbl">Guest satisfaction</div></div>
+      <div class="stat grow"><div class="num" data-countup="24" data-suffix="/7">24/7</div><div class="lbl">Butler & concierge</div></div>
+      <div class="stat grow"><div class="num" data-countup="14" data-suffix=" yrs">14 yrs</div><div class="lbl">Of five-star service</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:56px">
+  <div class="container">
+    <div class="section-head rv">
+      <span class="eyebrow">The Collection</span>
+      <h2>Ten sanctuaries, one promise</h2>
+      <p>Riverside grand hotels, temple sanctuaries, island villas and coastal retreats across Cambodia.</p>
+    </div>
+    <div class="room-grid">
+      {% for pr in properties|slice:":3" %}
+      <div class="room-card rv">
+        <a class="room-media" href="{% url 'hotel:room_list' %}?property={{ pr.slug }}">
+          <img src="{{ pr.image_url|default:'/static/img/room-placeholder.svg' }}" alt="{{ pr.name }}" onerror="this.src='/static/img/room-placeholder.svg'">
+          <span class="price-tag">{{ pr.stars }}<i class="ri-star-fill" aria-hidden="true"></i> <span>{{ pr.city }}</span></span>
+        </a>
+        <div class="room-body">
+          <h3 style="font-size:20px">{{ pr.name }}</h3>
+          <p class="muted small">{{ pr.tagline|truncatechars:100 }}</p>
+          <div class="room-foot">
+            <span class="chip">{% if pr.from_price %}from {{ pr.from_price|money }}{% endif %}</span>
+            <a class="btn btn-outline btn-sm" href="{% url 'hotel:room_list' %}?property={{ pr.slug }}">Explore <i class="ri-arrow-right-line" aria-hidden="true"></i></a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="center mt-4 rv"><a class="btn btn-outline" href="{% url 'collection:property_list' %}">View all {{ properties|length }} hotels <i class="ri-arrow-right-line" aria-hidden="true"></i></a></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head rv">
+      <span class="eyebrow">Stay with us</span>
+      <h2>Rooms & Suites</h2>
+      <p>Every room is a sanctuary of Khmer craftsmanship — silk textiles, teak floors and private balconies over the river or the skyline.</p>
+    </div>
+    <div class="room-grid">
+      {% for rt in featured %}
+      <div class="room-card rv">
+        <a class="room-media" href="{{ rt.get_absolute_url }}">
+          <img src="{{ rt.image_url|default:'/static/img/room-placeholder.svg' }}" alt="{{ rt.name }}" onerror="this.src='/static/img/room-placeholder.svg'">
+          <span class="price-tag">{{ rt.base_price|money }} <span>/ night</span></span>
+        </a>
+        <div class="room-body">
+          <h3>{{ rt.name }}</h3>
+          <div class="room-meta">
+            <span><i class="ri-user-3-line" aria-hidden="true"></i> up to <b>{{ rt.max_guests }}</b></span>
+            <span><i class="ri-hotel-bed-line" aria-hidden="true"></i> <b>{{ rt.get_bed_type_display }}</b></span>
+            <span><i class="ri-ruler-2-line" aria-hidden="true"></i> <b>{{ rt.size_sqm }} m²</b></span>
+            {% if rt.floor_range %}<span><i class="ri-building-2-line" aria-hidden="true"></i> floors <b>{{ rt.floor_range }}</b></span>{% endif %}
+          </div>
+          <p class="muted small">{{ rt.description|truncatechars:120 }}</p>
+          <div class="room-foot">
+            <div class="amenity-chips">{% for a in rt.amenities.all|slice:":3" %}<span class="chip"><i class="{{ a.icon}}" aria-hidden="true"></i> {{ a.name }}</span>{% endfor %}</div>
+            <a class="btn btn-outline btn-sm" href="{{ rt.get_absolute_url }}">View details <i class="ri-arrow-right-line" aria-hidden="true"></i></a>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="center mt-6 rv"><a class="btn btn-primary btn-lg" href="{% url 'hotel:room_list' %}">Explore all rooms & live rates</a></div>
+  </div>
+</section>
+
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span>Forbes Travel Guide · Five Star <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+    <span>World Travel Awards · Asia's Leading Hotel 2025 <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+    <span>Condé Nast Gold List <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+    <span>Michelin Guide · Recommended Dining <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+    <span>TripAdvisor · Travellers' Choice Best of the Best <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+    <span>Forbes Travel Guide · Five Star <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+    <span>World Travel Awards · Asia's Leading Hotel 2025 <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+    <span>Condé Nast Gold List <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+    <span>Michelin Guide · Recommended Dining <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+    <span>TripAdvisor · Travellers' Choice Best of the Best <i><i class="ri-vip-diamond-line" aria-hidden="true"></i></i></span>
+  </div>
+</div>
+
+<section class="section feature-strip" id="amenities">
+  <div class="container">
+    <div class="section-head rv" style="margin-bottom:44px">
+      <span class="eyebrow" style="color:var(--gold-2)">The Aurelia experience</span>
+      <h2 style="color:#fff">Everything, considered.</h2>
+    </div>
+    <div class="cols">
+      <div class="feat rv"><div class="ic"><i class="ri-drop-line" aria-hidden="true"></i></div><h4>Infinity Pool & Sky Bar</h4><p>Rooftop pool overlooking the confluence of the Mekong and Tonlé Sap, open until midnight.</p></div>
+      <div class="feat rv"><div class="ic"><i class="ri-leaf-line" aria-hidden="true"></i></div><h4>Seraya Spa</h4><p>Traditional Khmer massage, aromatherapy suites and a riverside meditation pavilion.</p></div>
+      <div class="feat rv"><div class="ic"><i class="ri-restaurant-2-line" aria-hidden="true"></i></div><h4>Three Restaurants</h4><p>Fine Khmer dining, a Japanese omakase counter and an all-day French brasserie.</p></div>
+      <div class="feat rv"><div class="ic"><i class="ri-car-line" aria-hidden="true"></i></div><h4>Airport Transfers</h4><p>Complimentary luxury transfer, 24-hour concierge and limousine service.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="background:var(--ivory)">
+  <div class="container" style="max-width:860px">
+    <div class="section-head rv">
+      <span class="eyebrow">Guest voices</span>
+      <h2>Stories from the river</h2>
+    </div>
+    <div class="testi-wrap rv">
+      <div class="testi active">
+        <p class="quote center">The sunset from the Royal Mekong Suite's plunge pool is the single most beautiful thing I have seen in Cambodia. Service that anticipates you before you ask.</p>
+        <p class="center muted small mt-3">— Isabelle M., Paris · stayed in the Royal Mekong Suite</p>
+      </div>
+      <div class="testi">
+        <p class="quote center">Check-in took ninety seconds, my room was upgraded without a word, and the Mekong dinner cruise leaves from the hotel pier. This is how luxury should feel — effortless.</p>
+        <p class="center muted small mt-3">— Kenji T., visiting from Tokyo · Executive Suite, Aurelia Grand Phnom Penh</p>
+      </div>
+      <div class="testi">
+        <p class="quote center">We honeymooned here and returned for our anniversary. The staff remembered our names, our table, even our coffee order. Aurelia is not a hotel, it is a homecoming.</p>
+        <p class="center muted small mt-3">— Dara & Sokha, Phnom Penh · Deluxe River King</p>
+      </div>
+    </div>
+    <div class="testi-dots" role="tablist">
+      <button class="active" aria-label="Testimonial 1"></button>
+      <button aria-label="Testimonial 2"></button>
+      <button aria-label="Testimonial 3"></button>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:40px">
+  <div class="container">
+    <div class="section-head rv">
+      <span class="eyebrow">Amenities</span>
+      <h2>In every room</h2>
+    </div>
+    <div class="flex flex-wrap gap-2 center rv" style="justify-content:center">
+      {% for a in amenities %}<span class="chip" style="padding:8px 16px;font-size:13.5px"><i class="{{ a.icon}}" aria-hidden="true"></i> {{ a.name }}</span>{% endfor %}
+    </div>
+    <div class="cta-banner rv-scale rv mt-6 center">
+      <h2>Your river is waiting.</h2>
+      <p style="color:#c7cede;max-width:520px;margin:12px auto 26px">Book direct for the best rate, complimentary breakfast and late checkout — guaranteed.</p>
+      <a class="btn btn-gold btn-lg" href="{% url 'hotel:room_list' %}">Check availability</a>
+    </div>
+  </div>
+</section>
+{% include "partials/ios_dates.html" %}
+{% include "partials/ios_guests.html" %}
+{% endblock %}

@@ -1,0 +1,78 @@
+{% if not user.is_authenticated %}
+<div class="welcome-offer-backdrop" role="presentation" aria-hidden="true" data-welcome-offer>
+  <div class="welcome-offer" role="dialog" aria-modal="true" aria-labelledby="welcome-offer-title" aria-describedby="welcome-offer-description" data-welcome-card tabindex="-1">
+    <button class="welcome-offer-close" type="button" data-welcome-dismiss aria-label="Dismiss welcome offer"><i class="ri-close-line" aria-hidden="true"></i></button>
+    <div class="welcome-offer-visual" aria-hidden="true">
+      <span class="welcome-offer-orbit orbit-one"></span>
+      <span class="welcome-offer-orbit orbit-two"></span>
+      <span class="welcome-offer-spark spark-one"><i class="ri-sparkling-2-line"></i></span>
+      <span class="welcome-offer-spark spark-two"><i class="ri-star-line"></i></span>
+      <span class="welcome-offer-percent"><b>10</b><small>% OFF</small></span>
+      <span class="welcome-offer-coupon"><i class="ri-coupon-3-line"></i></span>
+    </div>
+    <div class="welcome-offer-content">
+      <span class="welcome-offer-eyebrow"><i class="ri-sparkling-2-line" aria-hidden="true"></i> A private welcome offer</span>
+      <h2 id="welcome-offer-title">Welcome to Aurelia</h2>
+      <p id="welcome-offer-description">Register now and enjoy <strong>10% off your first stay</strong> across our Cambodian collection.</p>
+      <a class="welcome-offer-cta" data-welcome-cta href="{% url 'accounts:signup' %}"><span>Unlock my offer</span><i class="ri-arrow-right-up-line" aria-hidden="true"></i></a>
+      <small class="welcome-offer-note"><i class="ri-shield-check-line" aria-hidden="true"></i> Available for new registered guests on their first web booking.</small>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var modal = document.querySelector('[data-welcome-offer]');
+  if (!modal) return;
+  var card = modal.querySelector('[data-welcome-card]');
+  var close = modal.querySelector('[data-welcome-dismiss]');
+  var cta = modal.querySelector('[data-welcome-cta]');
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var previousFocus = null;
+  var dismissed = false;
+  try {
+    if (sessionStorage.getItem('aureliaWelcomeOfferDismissed') === '1') {
+      modal.remove();
+      return;
+    }
+  } catch (e) {}
+
+  function remember() {
+    try { sessionStorage.setItem('aureliaWelcomeOfferDismissed', '1'); } catch (e) {}
+  }
+  function finishClose() {
+    modal.remove();
+    document.body.classList.remove('welcome-modal-open');
+    if (previousFocus && typeof previousFocus.focus === 'function') previousFocus.focus();
+  }
+  function dismiss() {
+    if (dismissed) return;
+    dismissed = true;
+    remember();
+    modal.classList.remove('is-visible');
+    modal.classList.add('is-closing');
+    window.setTimeout(finishClose, reduced ? 0 : 280);
+  }
+  function open() {
+    previousFocus = document.activeElement;
+    document.body.classList.add('welcome-modal-open');
+    modal.setAttribute('aria-hidden', 'false');
+    modal.classList.add('is-visible');
+    window.setTimeout(function () { if (card) card.focus(); }, reduced ? 0 : 180);
+  }
+  if (close) close.addEventListener('click', dismiss);
+  if (cta) cta.addEventListener('click', remember);
+  modal.addEventListener('click', function (event) { if (event.target === modal) dismiss(); });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && !dismissed) { dismiss(); return; }
+    if (event.key !== 'Tab' || dismissed || !card) return;
+    var focusable = card.querySelectorAll('button, a[href], [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
+  window.setTimeout(open, reduced ? 0 : 720);
+})();
+</script>
+{% endif %}

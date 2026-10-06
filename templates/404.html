@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Page not found · Aurelia Collection{% endblock %}
+{% block content %}
+<section class="section err-page">
+  <div>
+    <span class="err-glass"><i class="ri-compass-3-line" aria-hidden="true"></i></span>
+    <div class="err-code">404</div>
+    <h1>This road leads nowhere</h1>
+    <p>The page you were looking for has moved, retired, or never existed among our sanctuaries. Let us walk you back to the collection.</p>
+    <div class="err-acts">
+      <a class="btn btn-gold btn-lg" href="{% url 'core:home' %}"><i class="ri-home-5-line" aria-hidden="true"></i> Back home</a>
+      <a class="btn btn-outline btn-lg" href="{% url 'hotel:room_list' %}"><i class="ri-hotel-bed-line" aria-hidden="true"></i> Browse rooms &amp; suites</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

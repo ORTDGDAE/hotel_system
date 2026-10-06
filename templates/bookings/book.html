@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load hotel_extras %}
+{% block title %}Reserve {{ room_type.name }} · {{ HOTEL_NAME }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:40px">
+  <div class="container" style="max-width:1080px">
+    <div class="stepper">
+      <div class="step done"><span class="n"><i class="ri-check-line" aria-hidden="true"></i></span><span class="lbl">Dates & room</span></div>
+      <div class="bar"></div>
+      <div class="step current"><span class="n">2</span><span class="lbl">Guest details & payment</span></div>
+      <div class="bar"></div>
+      <div class="step"><span class="n">3</span><span class="lbl">Confirmation</span></div>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1.5fr 1fr;gap:28px;align-items:start" id="book-grid">
+      <div class="card card-pad rv rv-left">
+        <h2 class="display" style="font-size:24px">Complete your reservation</h2>
+        <p class="muted small mb-4">{{ room_type.name }} · {{ check_in|date:"D d M Y" }} <i class="ri-arrow-right-line" aria-hidden="true"></i> {{ check_out|date:"D d M Y" }} · {{ rooms }} room{{ rooms|pluralize }} · {{ adults }} adult{{ adults|pluralize }}{% if children %} · {{ children }} child{{ children|pluralize }}{% endif %}</p>
+        {% if avail < rooms %}
+          <div class="badge badge-danger mb-3">Unfortunately only {{ avail }} room(s) remain — please adjust your search.</div>
+        {% endif %}
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="check_in" value="{{ check_in|date:'Y-m-d' }}">
+          <input type="hidden" name="check_out" value="{{ check_out|date:'Y-m-d' }}">
+          <input type="hidden" name="rooms" value="{{ rooms }}">
+          <input type="hidden" name="adults" value="{{ adults }}">
+          <input type="hidden" name="children" value="{{ children }}">
+          <input type="hidden" name="idem_token" value="{{ idem_token }}">
+          <div class="form-row">
+            <div class="field"><label>{{ form.guest_name.label }}</label>{{ form.guest_name }}{% for e in form.guest_name.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}</div>
+            <div class="field"><label>{{ form.guest_phone.label }} <span aria-hidden="true" style="color:var(--red)">*</span></label>{{ form.guest_phone }}{% for e in form.guest_phone.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}<p class="helptext">Required for booking confirmation.</p></div>
+          </div>
+          <div class="field"><label>{{ form.guest_email.label }}</label>{{ form.guest_email }}{% for e in form.guest_email.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}
+            <p class="helptext">Your confirmation and folio receipt will be sent here.</p></div>
+          <div class="field"><label>{{ form.special_requests.label }}</label>{{ form.special_requests }}
+            <p class="helptext">Early check-in, airport pickup, celebrations, dietary needs…</p></div>
+          <div class="card card-pad mb-3" style="background:var(--ivory);border-color:#ead9ac">
+            <label class="checkline mb-2">{{ form.pay_now }} <b>Pay {{ pricing.total|money }} now</b>&nbsp;(secure simulated gateway)</label>
+            <div id="pay-methods">{{ form.payment_method }}</div>
+            <p class="helptext">Or pay at the hotel — your card details are never stored in this demo.</p>
+          </div>
+          <button class="btn btn-gold btn-lg btn-block" type="submit" {% if avail < rooms %}disabled{% endif %}>Confirm reservation · {{ pricing.total|money }}</button>
+          <p class="tiny muted mt-2 center">By booking you agree to the cancellation policy — free until {{ room_type.cancellation_days }} days before arrival.</p>
+        </form>
+      </div>
+
+      <div class="card card-pad summary-panel rv rv-right">
+        <div class="room-media" style="height:150px;border-radius:12px;margin-bottom:16px">
+          <img src="{{ room_type.image_url|default:'/static/img/room-placeholder.svg' }}" alt="{{ room_type.name }}" onerror="this.src='/static/img/room-placeholder.svg'">
+        </div>
+        <h3 class="display" style="font-size:20px">{{ room_type.name }}</h3>
+        <div class="room-meta tiny mt-1 mb-3"><span><i class="ri-user-3-line" aria-hidden="true"></i> {{ room_type.max_guests }}</span><span><i class="ri-hotel-bed-line" aria-hidden="true"></i> {{ room_type.get_bed_type_display }}</span><span><i class="ri-ruler-2-line" aria-hidden="true"></i> {{ room_type.size_sqm }} m²</span></div>
+        {% for night in pricing.nights %}
+          <div class="rate-night"><span>{{ night.date|night_label }}</span><b>{{ night.rate|money }}</b></div>
+        {% endfor %}
+        {% if pricing.discount %}
+          <div class="summary-line"><span>Room subtotal</span><s class="muted">{{ pricing.list_subtotal|money }}</s></div>
+          <div class="summary-line welcome-discount-line"><span><i class="ri-coupon-3-line" aria-hidden="true"></i> Welcome offer · 10% off</span><b>−{{ pricing.discount|money }}</b></div>
+        {% endif %}
+        <div class="summary-line mt-2"><span>Subtotal · {{ rooms }} room{{ rooms|pluralize }}</span><b>{{ pricing.subtotal|money }}</b></div>
+        {% if pricing.service %}<div class="summary-line"><span>Service charge</span><b>{{ pricing.service|money }}</b></div>{% endif %}
+        <div class="summary-line"><span>Tax (5%)</span><b>{{ pricing.tax|money }}</b></div>
+        <div class="summary-line total"><span>Total</span><b>{{ pricing.total|money }}</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+<style>@media (max-width:980px){#book-grid{grid-template-columns:1fr !important}}</style>
+{% endblock %}

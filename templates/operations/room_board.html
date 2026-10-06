@@ -1,0 +1,62 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}Room Board{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div><h1>Room board</h1><div class="sub">Live housekeeping & front-desk status of every physical room</div></div>
+  <span class="live"><span class="dot"></span> Live updates</span>
+</div>
+
+<div class="finance-explainer task-permission-guide" role="note">
+  <i class="ri-flow-chart" aria-hidden="true"></i>
+  <span><b>Dirty-room workflow:</b> check-out or a dirty status creates one cleaning task for this room. Managers and Administrators can see and assign it; the assigned Housekeeper then sees it on their personal board, starts it, and marks it complete. Completion returns a vacant-dirty room to vacant-clean.</span>
+</div>
+
+<div class="flex flex-wrap gap-2 mb-4">
+  <a class="badge badge-success" style="padding:8px 14px" href="?status=vacant_clean">Vacant clean · {{ counts.vacant_clean }}</a>
+  <a class="badge badge-warning" style="padding:8px 14px" href="?status=vacant_dirty">Vacant dirty · {{ counts.vacant_dirty }}</a>
+  <a class="badge badge-info" style="padding:8px 14px" href="?status=occupied_clean">Occupied clean · {{ counts.occupied_clean }}</a>
+  <a class="badge badge-violet" style="padding:8px 14px" href="?status=occupied_dirty">Occupied dirty · {{ counts.occupied_dirty }}</a>
+  <a class="badge badge-danger" style="padding:8px 14px" href="?status=maintenance">Maintenance · {{ counts.maintenance }}</a>
+  <a class="badge badge-danger" style="padding:8px 14px" href="?status=out_of_order">Out of order · {{ counts.out_of_order }}</a>
+  <a class="badge badge-muted" style="padding:8px 14px" href="?">Show all</a>
+</div>
+
+{% for floor, rooms in rooms_by_floor.items %}
+  <div class="floor-head"><h3>Floor {{ floor }}</h3><span class="rule"></span><span class="tiny muted">{{ rooms|length }} rooms</span></div>
+  <div class="room-grid-board">
+    {% for room in rooms %}
+    <div class="room-tile {% if room.status == 'vacant_clean' %}vc{% elif room.status == 'vacant_dirty' %}vd{% elif room.status == 'occupied_clean' %}oc{% elif room.status == 'occupied_dirty' %}od{% else %}mm{% endif %}" data-room-id="{{ room.pk }}">
+      <div class="flex-between">
+        <span class="num">{{ room.number }}</span>
+        <span class="badge badge-{{ room.status_tone }}" style="font-size:10.5px;padding:2px 8px" data-status-badge>{{ room.get_status_display }}</span>
+      </div>
+      <span class="t">{{ room.room_type.name }}</span>
+      {% with task=room.open_housekeeping_tasks.0 %}
+      {% if task %}
+        <a class="tiny muted" href="{% url 'operations:task_board' %}?tab=open" title="Open housekeeping workflow">
+          <i class="ri-broom-line" aria-hidden="true"></i>
+          Cleaning: {{ task.get_status_display }}{% if task.assigned_to %} · {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}{% else %} · Needs assignment{% endif %}
+        </a>
+      {% elif room.status == 'vacant_dirty' or room.status == 'occupied_dirty' %}
+        <span class="tiny" style="color:var(--red)"><i class="ri-alert-line" aria-hidden="true"></i> No open cleaning task</span>
+      {% endif %}
+      {% endwith %}
+      <form method="post" action="{% url 'operations:room_status' room.pk %}" class="flex gap-1">
+        {% csrf_token %}
+        <select name="status" style="padding:5px 6px;font-size:12px">
+          {% for value, label in status_choices %}<option value="{{ value }}" {% if room.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-outline btn-sm" type="submit" style="padding:5px 8px">Set</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+{% empty %}
+  <div class="empty-state"><div class="ic"><i class="ri-door-line" aria-hidden="true"></i></div>No rooms match this filter.</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<div id="room-stream-url" data-url="{% url 'operations:room_stream' %}" hidden></div>
+{% endblock %}

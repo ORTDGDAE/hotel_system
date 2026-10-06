@@ -1246,4 +1246,33 @@ INSERT INTO "operations_housekeepingtask" ("id", "room_id", "booking_id", "task_
 INSERT INTO "operations_maintenancerequest" ("id", "room_id", "title", "description", "severity", "status", "reported_by_id", "created_at", "resolved_at") VALUES (13, '1557', 'Air-conditioning compressor failure', 'Unit not cooling; parts ordered.', 'critical', 'open', '3', '2026-09-27T08:51:40.559Z', NULL);
 INSERT INTO "operations_maintenancerequest" ("id", "room_id", "title", "description", "severity", "status", "reported_by_id", "created_at", "resolved_at") VALUES (14, '1525', 'Bathroom faucet dripping', '', 'low', 'resolved', '4', '2026-09-27T08:51:40.561Z', '2026-09-25T08:51:40.561Z');
 
+-- ---------------------------------------------------------------------------
+-- Identity-sequence repair (REQUIRED — added 2026-10-06)
+--
+-- The TRUNCATE above uses RESTART IDENTITY, which resets every sequence to 1,
+-- and the INSERTs below it supply explicit primary keys (up to id 1851).
+-- Without re-advancing the sequences, the FIRST new row the application
+-- creates after this import is offered id=1 and fails with:
+--   duplicate key value violates unique constraint "<table>_pkey"
+-- e.g. a new guest signup hits accounts_user (ids 1-56 already exist).
+--
+-- pg_get_serial_sequence() resolves each table's owning sequence by name, so
+-- this stays correct if the export is regenerated with different ids.
+-- Safe to re-run: it only ever moves a sequence forward to MAX(id).
+-- ---------------------------------------------------------------------------
+SELECT setval(pg_get_serial_sequence('"accounts_user"', 'id'), COALESCE((SELECT MAX("id") FROM "accounts_user"), 1), true);
+SELECT setval(pg_get_serial_sequence('"bookings_booking"', 'id'), COALESCE((SELECT MAX("id") FROM "bookings_booking"), 1), true);
+SELECT setval(pg_get_serial_sequence('"bookings_raterule"', 'id'), COALESCE((SELECT MAX("id") FROM "bookings_raterule"), 1), true);
+SELECT setval(pg_get_serial_sequence('"bookings_roomassignment"', 'id'), COALESCE((SELECT MAX("id") FROM "bookings_roomassignment"), 1), true);
+SELECT setval(pg_get_serial_sequence('"finance_invoice"', 'id'), COALESCE((SELECT MAX("id") FROM "finance_invoice"), 1), true);
+SELECT setval(pg_get_serial_sequence('"finance_payment"', 'id'), COALESCE((SELECT MAX("id") FROM "finance_payment"), 1), true);
+SELECT setval(pg_get_serial_sequence('"hotel_amenity"', 'id'), COALESCE((SELECT MAX("id") FROM "hotel_amenity"), 1), true);
+SELECT setval(pg_get_serial_sequence('"hotel_attraction"', 'id'), COALESCE((SELECT MAX("id") FROM "hotel_attraction"), 1), true);
+SELECT setval(pg_get_serial_sequence('"hotel_property"', 'id'), COALESCE((SELECT MAX("id") FROM "hotel_property"), 1), true);
+SELECT setval(pg_get_serial_sequence('"hotel_room"', 'id'), COALESCE((SELECT MAX("id") FROM "hotel_room"), 1), true);
+SELECT setval(pg_get_serial_sequence('"hotel_roomtype"', 'id'), COALESCE((SELECT MAX("id") FROM "hotel_roomtype"), 1), true);
+SELECT setval(pg_get_serial_sequence('"hotel_roomtype_amenities"', 'id'), COALESCE((SELECT MAX("id") FROM "hotel_roomtype_amenities"), 1), true);
+SELECT setval(pg_get_serial_sequence('"operations_housekeepingtask"', 'id'), COALESCE((SELECT MAX("id") FROM "operations_housekeepingtask"), 1), true);
+SELECT setval(pg_get_serial_sequence('"operations_maintenancerequest"', 'id'), COALESCE((SELECT MAX("id") FROM "operations_maintenancerequest"), 1), true);
+
 COMMIT;

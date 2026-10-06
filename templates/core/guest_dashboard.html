@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load hotel_extras %}
+{% block title %}My Stays · {{ HOTEL_NAME }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:40px">
+  <div class="container" style="max-width:960px">
+    <div class="guest-hero flex-between flex-wrap">
+      <div>
+        <h1>Welcome back, {{ user.first_name|default:user.username }}</h1>
+        <p>{{ total_stays }} reservation{{ total_stays|pluralize }} with Aurelia Grand · {{ upcoming|length }} upcoming</p>
+      </div>
+      <a class="btn btn-gold btn-lg" href="{% url 'hotel:room_list' %}">Book another stay</a>
+    </div>
+
+    <h2 class="display mb-3" style="font-size:24px">Upcoming & current stays</h2>
+    <div class="grid mb-4">
+      {% for b in upcoming %}
+      <div class="card card-pad rv">
+        <div class="flex-between flex-wrap gap-3">
+          <div class="flex gap-3">
+            <div class="room-media" style="width:120px;height:84px;border-radius:10px;flex-shrink:0">
+              <img src="{{ b.room_type.image_url|default:'/static/img/room-placeholder.svg' }}" alt="" onerror="this.src='/static/img/room-placeholder.svg'" style="width:100%;height:100%;object-fit:cover">
+            </div>
+            <div>
+              <b style="font-size:16px">{{ b.room_type.name }} × {{ b.rooms_count }}</b>
+              <div class="muted small">{{ b.check_in|date:"D d M Y" }} <i class="ri-arrow-right-line" aria-hidden="true"></i> {{ b.check_out|date:"D d M Y" }} · {{ b.nights }} night{{ b.nights|pluralize }}</div>
+              <div class="tiny muted">Code {{ b.code }} · {{ b.adults }} adult{{ b.adults|pluralize }}{% if b.children %} · {{ b.children }} child{{ b.children|pluralize }}{% endif %}</div>
+              <div class="mt-1">
+                <span class="badge badge-{{ b.status_tone }}">{{ b.get_status_display }}</span>
+                {% if b.invoice %}<span class="badge badge-{% if b.invoice.status == 'paid' %}success{% else %}warning{% endif %}">{{ b.invoice.get_status_display }}</span>{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="right">
+            <div style="font-size:20px;font-weight:750">{{ b.grand_total|money }}</div>
+            <div class="tiny muted mb-2">total incl. taxes</div>
+            {% if b.status == 'confirmed' %}
+              {% if b.is_free_cancellation %}
+              <form method="post" action="{% url 'bookings:cancel_mine' b.pk %}" data-confirm="Cancel reservation {{ b.code }}? Free cancellation applies.">
+                {% csrf_token %}<button class="btn btn-danger btn-sm" type="submit">Cancel free</button>
+              </form>
+              {% else %}
+              <form method="post" action="{% url 'bookings:cancel_mine' b.pk %}" data-confirm="Cancel reservation {{ b.code }}? A first-night fee will be retained.">
+                {% csrf_token %}<input type="hidden" name="reason" value="Cancelled by guest (late)">
+                <button class="btn btn-danger btn-sm" type="submit">Cancel (fee applies)</button>
+              </form>
+              <div class="tiny muted mt-1">Free until {{ b.cancellation_deadline|date:"d M" }}</div>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty-state card"><div class="ic"><i class="ri-luggage-deposit-line" aria-hidden="true"></i></div>No upcoming stays. <a href="{% url 'hotel:room_list' %}" style="color:var(--gold);font-weight:600">Find a room <i class="ri-arrow-right-line" aria-hidden="true"></i></a></div>
+      {% endfor %}
+    </div>
+
+    {% if past %}
+    <h2 class="display mb-3" style="font-size:24px">Stay history</h2>
+    <div class="card"><div class="table-wrap"><table class="data">
+      <thead><tr><th>Code</th><th>Room</th><th>Dates</th><th>Status</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        {% for b in past %}
+        <tr>
+          <td class="mono">{{ b.code }}</td>
+          <td>{{ b.room_type.name }} × {{ b.rooms_count }}</td>
+          <td class="nowrap">{{ b.check_in|date:"d M Y" }} <i class="ri-arrow-right-line" aria-hidden="true"></i> {{ b.check_out|date:"d M Y" }}</td>
+          <td><span class="badge badge-{{ b.status_tone }}">{{ b.get_status_display }}</span></td>
+          <td class="num">{{ b.grand_total|money }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div></div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

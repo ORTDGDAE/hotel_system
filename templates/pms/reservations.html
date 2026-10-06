@@ -1,0 +1,45 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}Reservations{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div><h1>Reservations</h1><div class="sub">All bookings across channels</div></div>
+  <a class="btn btn-gold btn-sm" href="{% url 'pms:booking_new' %}"><i class="ri-add-line" aria-hidden="true"></i> New reservation</a>
+</div>
+
+<form method="get" class="filter-bar">
+  <div class="field grow" style="min-width:220px"><label>Search</label>
+    <input type="search" name="q" value="{{ q }}" placeholder="Code, guest name or email…"></div>
+  <div class="field"><label>Status</label>
+    <select name="status" data-autosubmit>
+      <option value="">All statuses</option>
+      {% for value, label in status_choices %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></div>
+  <div class="field"><label>From</label><input type="date" name="from" value="{{ date_from }}"></div>
+  <div class="field"><label>To</label><input type="date" name="to" value="{{ date_to }}"></div>
+  <button class="btn btn-primary" type="submit">Filter</button>
+</form>
+
+<div class="card"><div class="table-wrap"><table class="data">
+  <thead><tr><th>Code</th><th>Guest</th><th>Room type</th><th>Stay</th><th>Nights</th><th>Rooms</th><th>Source</th><th>Status</th><th class="num">Total</th><th></th></tr></thead>
+  <tbody>
+  {% for b in bookings %}
+    <tr>
+      <td class="mono"><a href="{{ b.get_absolute_url }}"><b>{{ b.code }}</b></a></td>
+      <td>{{ b.guest_name }}<div class="tiny muted">{{ b.guest_email|default:"—" }}</div></td>
+      <td>{{ b.room_type.name }}</td>
+      <td class="nowrap">{{ b.check_in|date:"d M" }} <i class="ri-arrow-right-line" aria-hidden="true"></i> {{ b.check_out|date:"d M Y" }}</td>
+      <td>{{ b.nights }}</td>
+      <td>{{ b.rooms_count }}</td>
+      <td><span class="badge badge-muted no-dot">{{ b.get_source_display }}</span></td>
+      <td><span class="badge badge-{{ b.status_tone }}">{{ b.get_status_display }}</span></td>
+      <td class="num">{{ b.grand_total|money }}</td>
+      <td class="right"><a class="btn btn-outline btn-sm" href="{{ b.get_absolute_url }}">Open</a></td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="10"><div class="empty-state"><div class="ic"><i class="ri-folder-line" aria-hidden="true"></i></div>No reservations match these filters.</div></td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% include "partials/pagination.html" %}
+{% endblock %}

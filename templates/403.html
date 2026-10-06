@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Access denied · Aurelia Collection{% endblock %}
+{% block content %}
+<section class="section err-page">
+  <div>
+    <span class="err-glass"><i class="ri-lock-2-line" aria-hidden="true"></i></span>
+    <div class="err-code">403</div>
+    <h1>Staff corridors only</h1>
+    <p>Your account does not carry the keys for this area. If you believe it should, please contact the front office manager.</p>
+    <div class="err-acts">
+      <a class="btn btn-gold btn-lg" href="{% url 'core:home' %}"><i class="ri-home-5-line" aria-hidden="true"></i> Back home</a>
+      <a class="btn btn-outline btn-lg" href="{% url 'accounts:login' %}"><i class="ri-login-box-line" aria-hidden="true"></i> Switch account</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

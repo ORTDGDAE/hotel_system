@@ -1,0 +1,32 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---- Django runtime artifacts (generated on every boot/deploy) ----
+# collectstatic output — Render rebuilds this via render_start.sh
+/staticfiles/
+/media/
+# Local demo database created by start.sh / start.bat.
+# NOTE: navicat/aurelia_collection.db is a deliberate, committed export and is
+# not matched by this root-anchored rule.
+/aurelia_collection.db
+db.sqlite3
+*.log
+
+# ---- Local secrets (never commit real credentials) ----
+.env
+mysql.env
+mysql.local.bat
+
+# ---- Editors / OS ----
+.DS_Store
+.idea/
+.vscode/
+
+# ---- Archives: the source of truth is the extracted tree, not the zip ----
+PP_latest.zip
+*.zip

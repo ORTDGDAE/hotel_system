@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load hotel_extras %}
+{% block title %}Our Hotels · Aurelia Collection{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:48px">
+  <div class="container">
+    <div class="section-head rv">
+      <span class="eyebrow">The Collection</span>
+      <h2>Ten sanctuaries. One kingdom of grace.</h2>
+      <p>From the Tonlé Sap riverfront to Angkor's temple road and the islands of the gulf — every Aurelia property is locally rooted and immaculately run.</p>
+    </div>
+    <div class="room-grid">
+      {% for pr in properties %}
+      <div class="room-card rv">
+        <a class="room-media" href="{% url 'hotel:room_list' %}?property={{ pr.slug }}">
+          <img src="{{ pr.image_url|default:'/static/img/room-placeholder.svg' }}" alt="{{ pr.name }}" onerror="this.src='/static/img/room-placeholder.svg'">
+          <span class="price-tag">{% if pr.from_price %}{{ pr.from_price|money }} <span>/ night from</span>{% else %}<span>—</span>{% endif %}</span>
+        </a>
+        <div class="room-body">
+          <h3 style="font-size:20px">{{ pr.name }}</h3>
+          <div class="room-meta">
+            <span><i class="ri-map-pin-2-line" aria-hidden="true"></i> <b>{{ pr.city }}, {{ pr.country }}</b></span>
+            <span><b>{{ pr.stars }}<i class="ri-star-fill" aria-hidden="true"></i></b></span>
+            <span><i class="ri-hotel-bed-line" aria-hidden="true"></i> <b>{{ pr.sellable_rooms }}</b> rooms</span>
+          </div>
+          {% if pr.vibe_list %}<div class="room-meta" style="margin:2px 0 6px">{% for t in pr.vibe_list %}<span class="chip" style="font-size:11px"><i class="ri-vip-diamond-line" aria-hidden="true"></i> {{ t }}</span>{% endfor %}</div>{% endif %}
+          <p class="muted small">{{ pr.tagline }}</p>
+          <p class="muted small" style="opacity:.85">{{ pr.description|truncatechars:150 }}</p>
+          <div class="room-foot">
+            <span class="chip">{{ pr.rt_count|default:pr.room_types.count }} room types</span>
+            <span class="flex gap-1" style="flex-wrap:wrap;justify-content:flex-end">
+              {% if pr.maps_url %}<a class="btn btn-outline btn-sm" href="{{ pr.maps_url }}" target="_blank" rel="noopener" aria-label="Open {{ pr.name }} in Google Maps"><i class="ri-map-2-line" aria-hidden="true"></i> Map</a>{% endif %}
+              <a class="btn btn-gold btn-sm" href="{% url 'hotel:room_list' %}?property={{ pr.slug }}">View rooms <i class="ri-arrow-right-line" aria-hidden="true"></i></a>
+            </span>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

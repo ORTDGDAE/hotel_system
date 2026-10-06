@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load hotel_extras %}
+{% block title %}Rooms & Suites · {{ HOTEL_NAME }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:44px">
+  <div class="container">
+    <div class="section-head rv" style="margin-bottom:28px">
+      <span class="eyebrow">Availability</span>
+      <h2>{% if property %}{{ property.name }}{% else %}Rooms & Suites{% endif %}</h2>
+      {% if property %}<p class="small muted mb-2"><i class="ri-map-pin-2-line" aria-hidden="true"></i> {{ property.city }}, {{ property.country }} · {{ property.stars }}<i class="ri-star-fill" aria-hidden="true"></i> · service {{ property.service_rate|floatformat:1 }}% · tax {{ property.tax_rate|floatformat:1 }}%{% if property.maps_url %} · <a href="{{ property.maps_url }}" target="_blank" rel="noopener" style="color:#1a73e8;font-weight:650"><i class="ri-map-2-line" aria-hidden="true"></i> Open in Google Maps</a>{% endif %}</p>
+      {% if property.vibe_list %}<div class="room-meta mb-2">{% for t in property.vibe_list %}<span class="chip" style="font-size:11px"><i class="ri-vip-diamond-line" aria-hidden="true"></i> {{ t }}</span>{% endfor %}</div>{% endif %}
+      {% if property.description %}<p style="max-width:820px;color:var(--ink-2)">{{ property.description }}</p>{% endif %}
+      {% if property.attractions.all %}
+      <div class="mt-4" style="max-width:1020px">
+        <h4 style="font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#b08d3f;margin:0 0 10px"><i class="ri-compass-3-line" aria-hidden="true"></i> Nearby · top things to do in {{ property.city }}</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px">
+          {% for a in property.attractions.all %}
+          <div style="border:1px solid rgba(20,30,50,.12);border-radius:14px;padding:12px 14px;background:rgba(255,255,255,.65);backdrop-filter:blur(4px)">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+              <b style="font-size:14px"><i class="{{ a.icon}}" aria-hidden="true"></i> {{ a.name }}</b>
+              {% if a.distance_label %}<span class="chip" style="font-size:10px;white-space:nowrap" title="auto-computed from Google Maps coordinates"><i class="ri-route-line" aria-hidden="true"></i> {{ a.distance_label }}</span>{% elif a.distance %}<span class="chip" style="font-size:10px;white-space:nowrap">{{ a.distance }}</span>{% endif %}
+            </div>
+            <p class="muted small" style="margin:6px 0 0">{{ a.blurb }}</p>
+            {% if a.maps_url %}<a href="{{ a.maps_url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;color:#1a73e8;font-size:11px;font-weight:650;margin-top:7px"><i class="ri-map-2-line" aria-hidden="true"></i> Open location</a>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <p class="muted small" style="margin-top:8px;font-size:11px">Attraction rankings based on Booking.com traveller data for {{ property.city }} · descriptions by Aurelia editors.</p>
+      </div>
+      {% endif %}{% endif %}
+      <p>{% if dated %}Live availability and total pricing for <b>{{ check_in|date:"D d M" }} <i class="ri-arrow-right-line" aria-hidden="true"></i> {{ check_out|date:"D d M" }}</b>, {{ rooms }} room{% if rooms > 1 %}s{% endif %}, {{ adults }} adult{% if adults > 1 %}s{% endif %}{% if children %}, {{ children }} child{% if children > 1 %}ren{% endif %}{% endif %}.{% else %}Choose your dates to see live availability and total pricing.{% endif %}</p>
+    </div>
+
+    <div class="search-dock" style="margin:0 0 34px">
+      <form method="get" data-datepair data-guestpair data-propertypair>
+        <div class="field" style="margin:0"><label>Hotel</label>
+          <select name="property" data-autosubmit>
+            <option value="">All hotels</option>
+            {% for pr in properties %}<option value="{{ pr.slug }}" data-city="{{ pr.city }}" data-stars="{{ pr.stars }}" data-featured="{% if pr.slug in recommended_slugs %}1{% else %}0{% endif %}" {% if property and property.pk == pr.pk %}selected{% endif %}>{{ pr.name }} · {{ pr.city }}</option>{% endfor %}
+          </select></div>
+        <div class="field" style="margin:0"><label>Check-in</label><input type="date" name="check_in" value="{{ check_in|date:'Y-m-d' }}" required></div>
+        <div class="field" style="margin:0"><label>Check-out</label><input type="date" name="check_out" value="{{ check_out|date:'Y-m-d' }}" required></div>
+        <div class="field" style="margin:0"><label>Rooms</label><select name="rooms">{% for i in "12345678" %}<option value="{{ i }}" {% if rooms == forloop.counter %}selected{% endif %}>{{ i }}</option>{% endfor %}</select></div>
+        <div class="field" style="margin:0"><label>Adults</label><select name="adults">{% for i in "123456" %}<option value="{{ i }}" {% if adults == forloop.counter %}selected{% endif %}>{{ i }}</option>{% endfor %}</select></div>
+        <div class="field" style="margin:0"><label>Children</label><select name="children">{% for i in "01234" %}<option value="{{ i }}" {% if children == forloop.counter0 %}selected{% endif %}>{{ i }}</option>{% endfor %}</select></div>
+        <button class="btn btn-primary btn-lg" type="submit">Update</button>
+      </form>
+    </div>
+
+    {% if property %}
+    <div class="hotel-selection-feedback" role="status" aria-live="polite">
+      <span class="hotel-feedback-icon"><i class="ri-checkbox-circle-fill" aria-hidden="true"></i></span>
+      <span class="hotel-feedback-copy">
+        <b>Now showing rooms at {{ property.name }}</b>
+        <small>{{ property.city }} · {{ cards|length }} room type{{ cards|length|pluralize }} · selection updated</small>
+      </span>
+      <a href="{% url 'hotel:room_list' %}" class="hotel-feedback-reset">View all hotels <i class="ri-arrow-right-line" aria-hidden="true"></i></a>
+    </div>
+    {% endif %}
+
+    <div class="room-grid">
+      {% for card in cards %}
+      {% with rt=card.room_type %}
+      <div class="room-card rv" {% if dated and card.available < rooms %}style="opacity:.55"{% endif %}>
+        <a class="room-media" href="{{ rt.get_absolute_url }}">
+          <img src="{{ rt.image_url|default:'/static/img/room-placeholder.svg' }}" alt="{{ rt.name }}" onerror="this.src='/static/img/room-placeholder.svg'">
+          <span class="price-tag">
+            {% if dated %}{{ card.pricing.total|money }} <span>total · {{ card.pricing.night_count }} night{{ card.pricing.night_count|pluralize }}</span>
+            {% else %}{{ rt.base_price|money }} <span>/ night</span>{% endif %}
+          </span>
+        </a>
+        <div class="room-body">
+          <h3>{{ rt.name }}</h3>
+          {% if not property %}<span class="chip" style="align-self:start"><i class="ri-map-pin-2-line" aria-hidden="true"></i> {{ rt.property.city }} · {{ rt.property.name }}</span>{% endif %}
+          <div class="room-meta">
+            <span><i class="ri-user-3-line" aria-hidden="true"></i> <b>{{ rt.max_guests }}</b> guests</span>
+            <span><i class="ri-hotel-bed-line" aria-hidden="true"></i> <b>{{ rt.get_bed_type_display }}</b></span>
+            <span><i class="ri-ruler-2-line" aria-hidden="true"></i> <b>{{ rt.size_sqm }} m²</b></span>
+          </div>
+          <p class="muted small">{{ rt.description|truncatechars:130 }}</p>
+          <div class="amenity-chips">{% for a in rt.amenities.all|slice:":4" %}<span class="chip"><i class="{{ a.icon}}" aria-hidden="true"></i> {{ a.name }}</span>{% endfor %}</div>
+          {% if dated %}
+            {% if card.available >= rooms %}
+              <div class="flex gap-2"><span class="badge badge-success">{{ card.available }} available</span>
+              {% if card.available <= 3 %}<span class="badge badge-warning">Selling fast</span>{% endif %}</div>
+            {% else %}
+              <span class="badge badge-danger">Sold out for these dates</span>
+            {% endif %}
+          {% endif %}
+          <div class="room-foot">
+            {% if dated and card.available >= rooms %}
+              <a class="btn btn-gold" href="{% url 'bookings:book' rt.slug %}?check_in={{ check_in|date:'Y-m-d' }}&check_out={{ check_out|date:'Y-m-d' }}&rooms={{ rooms }}&adults={{ adults }}&children={{ children }}">Book now</a>
+            {% elif dated %}
+              <a class="btn btn-outline" href="{{ rt.get_absolute_url }}">Other dates</a>
+            {% else %}
+              <a class="btn btn-primary" href="{{ rt.get_absolute_url }}">View details</a>
+            {% endif %}
+            <span class="muted tiny">{% if dated %}incl. service & tax{% else %}from {{ rt.base_price|money }}/night{% endif %}</span>
+          </div>
+        </div>
+      </div>
+      {% endwith %}
+      {% empty %}
+      <div class="empty-state" style="grid-column:1/-1"><div class="ic"><i class="ri-hotel-line" aria-hidden="true"></i></div>No rooms found. Try different dates.</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% include "partials/ios_dates.html" %}
+{% include "partials/ios_guests.html" %}
+{% include "partials/ios_property.html" %}
+{% endblock %}

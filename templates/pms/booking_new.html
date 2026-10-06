@@ -1,0 +1,55 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}New reservation{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div><h1>New reservation</h1><div class="sub">Walk-in, phone or OTA booking — priced and validated live</div></div>
+</div>
+<div class="dash-grid" style="grid-template-columns:1.5fr 1fr">
+  <div class="card card-pad">
+    <form method="post" id="new-booking-form">
+      {% csrf_token %}
+          <input type="hidden" name="idem_token" value="{{ idem_token }}">
+      {% if form.non_field_errors %}<div class="badge badge-danger mb-3">{{ form.non_field_errors.0 }}</div>{% endif %}
+      <div class="form-row">
+        <div class="field"><label>Guest (registered, optional)</label>{{ form.guest }}</div>
+        <div class="field"><label>Guest name *</label>{{ form.guest_name }}{% for e in form.guest_name.errors %}<p class="errorlist">{{ e }}</p>{% endfor %}</div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Email</label>{{ form.guest_email }}</div>
+        <div class="field"><label>Phone</label>{{ form.guest_phone }}</div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Room type</label>{{ form.room_type }}</div>
+        <div class="field"><label>Rooms</label>{{ form.rooms_count }}</div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Check-in</label>{{ form.check_in }}</div>
+        <div class="field"><label>Check-out</label>{{ form.check_out }}</div>
+        <div class="field"><label>Adults</label>{{ form.adults }}</div>
+        <div class="field"><label>Children</label>{{ form.children }}</div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Channel</label>{{ form.source }}</div>
+      </div>
+      <div class="field"><label>Special requests</label>{{ form.special_requests }}</div>
+      <button class="btn btn-gold btn-lg" type="submit">Create reservation</button>
+    </form>
+  </div>
+  <div class="card card-pad summary-panel">
+    <h3 class="card-title mb-2">Live price preview</h3>
+    <div id="price-preview">
+      {% if preview %}
+        <div class="summary-line"><span>Rooms subtotal ({{ preview.night_count }} nights × {{ preview.rooms }})</span><b>{{ preview.subtotal|money }}</b></div>
+        {% if preview.service %}<div class="summary-line"><span>Service charge</span><b>{{ preview.service|money }}</b></div>{% endif %}
+        <div class="summary-line"><span>Tax (5%)</span><b>{{ preview.tax|money }}</b></div>
+        <div class="summary-line total"><span>Total</span><b>{{ preview.total|money }}</b></div>
+      {% else %}
+        <p class="muted small">Select room type and dates to see the total.</p>
+      {% endif %}
+    </div>
+    <p class="tiny muted mt-3">Pricing applies active seasonal, weekend and promo rules automatically. Inventory is validated atomically at creation — no double bookings.</p>
+  </div>
+</div>
+<script>window.PRICE_API = "{% url 'pms:price_api' %}";</script>
+{% endblock %}

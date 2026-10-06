@@ -1,0 +1,23 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run test suite
+        run: python manage.py test bookings
+      - name: Seed demo dataset & audit ledger/inventory invariants
+        run: |
+          python manage.py migrate --noinput
+          python manage.py seed_demo
+          python manage.py audit_ledger
+      - name: End-to-end pipeline proof (payments included)
+        run: python scripts/pipeline_proof.py > /dev/null
+      - name: Django system check
+        run: python manage.py check --fail-level WARNING

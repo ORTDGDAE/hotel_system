@@ -1,0 +1,81 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div><h1>Business analytics</h1><div class="sub">Last {{ days }} days · {{ start|date:"d M" }} <i class="ri-arrow-right-line" aria-hidden="true"></i> {{ today|date:"d M Y" }} · <b>{{ scope_name }}</b></div></div>
+  <a class="btn btn-outline btn-sm" href="{% url 'finance:reports' %}?days={{ days }}">Financial report <i class="ri-arrow-right-line" aria-hidden="true"></i></a>
+</div>
+
+<div class="kpi-grid mb-4">
+  <div class="kpi"><span class="kpi-accent"></span><div class="kpi-label">Occupancy · tonight</div><div class="kpi-value" data-countup="{{ kpis.occupancy_today }}" data-decimals="1" data-suffix="%">{{ kpis.occupancy_today }}%</div><div class="kpi-sub">30-day average {{ kpis.occupancy_30 }}%</div>
+    <div class="progress mt-2"><div style="width:{{ kpis.occupancy_today|pct_bar }}%"></div></div></div>
+  <div class="kpi"><span class="kpi-accent green"></span><div class="kpi-label">Revenue · 30d</div><div class="kpi-value" data-countup="{{ kpis.revenue_30 }}" data-decimals="2" data-prefix="$" data-group="1">{{ kpis.revenue_30|money }}</div><div class="kpi-sub">{{ kpis.bookings_30 }} bookings created</div></div>
+  <div class="kpi"><span class="kpi-accent blue"></span><div class="kpi-label">ADR</div><div class="kpi-value" data-countup="{{ kpis.adr }}" data-decimals="2" data-prefix="$">{{ kpis.adr|money }}</div><div class="kpi-sub">average daily rate · {{ kpis.room_nights }} room-nights</div></div>
+  <div class="kpi"><span class="kpi-accent red"></span><div class="kpi-label">RevPAR</div><div class="kpi-value" data-countup="{{ kpis.revpar }}" data-decimals="2" data-prefix="$">{{ kpis.revpar|money }}</div><div class="kpi-sub">revenue per available room · {{ kpis.cancellations_30 }} cancelled/no-show</div></div>
+</div>
+
+<div class="dash-grid mb-4" style="grid-template-columns:1.6fr 1fr">
+  <div class="card card-pad">
+    <div class="flex-between mb-3"><h3 class="card-title">Bookings & revenue trend</h3>
+      <div class="legend"><span><span class="dot" style="background:#c3a15a"></span>Revenue</span><span><span class="dot" style="background:#2563eb"></span>Bookings</span></div></div>
+    <div class="chart-box"><canvas id="trendChart"></canvas></div>
+  </div>
+  <div class="card card-pad">
+    <h3 class="card-title mb-3">Channel mix</h3>
+    <div class="chart-box" style="height:260px"><canvas id="sourceChart"></canvas></div>
+  </div>
+</div>
+
+<div class="dash-grid" style="grid-template-columns:1fr 1.6fr">
+  <div class="card card-pad">
+    <h3 class="card-title mb-3">Occupancy · 30 days</h3>
+    <div class="chart-box" style="height:240px"><canvas id="occChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Room type performance</h3><span class="tiny muted">revenue & room-nights in window</span></div>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Room type</th><th class="num">Room-nights</th><th class="num">Revenue</th><th style="width:32%">Share</th></tr></thead>
+      <tbody>
+      {% for row in type_rows %}
+        <tr><td><b>{{ row.room_type__name }}</b></td><td class="num">{{ row.nights|default:0 }}</td><td class="num">{{ row.revenue|money }}</td>
+        <td><div class="progress blue"><div style="width:{% widthratio row.revenue kpis.revenue_30 100 %}%"></div></div></td></tr>
+      {% empty %}<tr><td colspan="4" class="muted small">No completed stays in this window.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof Chart === "undefined") {
+    document.querySelectorAll(".chart-box").forEach(b => b.innerHTML = '<p class="muted small center" style="padding-top:40px">Charts need internet access for the Chart.js CDN. Data tables below remain available.</p>');
+    return;
+  }
+  const labels = {{ chart_labels|safe }};
+  const gold = "#c3a15a", blue = "#2563eb", green = "#067647";
+  new Chart(document.getElementById("trendChart"), {
+    data: { labels, datasets: [
+      { type: "line", label: "Revenue", data: {{ revenue_series|safe }}, borderColor: gold, backgroundColor: "rgba(195,161,90,.12)", fill: true, tension: .35, pointRadius: 1.5, yAxisID: "y" },
+      { type: "bar", label: "Bookings", data: {{ bookings_series|safe }}, backgroundColor: "rgba(37,99,235,.55)", borderRadius: 4, yAxisID: "y1" }
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+      scales: { y: { beginAtZero: true, position: "left", ticks: { callback: v => "$" + v.toLocaleString() } },
+                y1: { beginAtZero: true, position: "right", grid: { drawOnChartArea: false }, ticks: { precision: 0 } } } }
+  });
+  new Chart(document.getElementById("sourceChart"), {
+    type: "doughnut",
+    data: { labels: {{ source_labels|safe }}, datasets: [{ data: {{ source_values|safe }}, backgroundColor: [gold, blue, green, "#6941c6", "#f79009"] }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: "62%", plugins: { legend: { position: "bottom" } } }
+  });
+  new Chart(document.getElementById("occChart"), {
+    type: "line",
+    data: { labels, datasets: [{ label: "Occupancy %", data: {{ occ_series|safe }}, borderColor: green, backgroundColor: "rgba(6,118,71,.10)", fill: true, tension: .3, pointRadius: 1.5 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + "%" } } } }
+  });
+});
+</script>
+{% endblock %}

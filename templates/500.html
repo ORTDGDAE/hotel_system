@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Something went wrong · Aurelia Collection{% endblock %}
+{% block content %}
+<section class="section err-page">
+  <div>
+    <span class="err-glass"><i class="ri-error-warning-line" aria-hidden="true"></i></span>
+    <div class="err-code">500</div>
+    <h1>A glass slipped at reception</h1>
+    <p>An unexpected error occurred on our side. Our engineers have been notified and are setting things right — please try again in a moment.</p>
+    <div class="err-acts">
+      <a class="btn btn-gold btn-lg" href="javascript:location.reload()"><i class="ri-refresh-line" aria-hidden="true"></i> Try again</a>
+      <a class="btn btn-outline btn-lg" href="{% url 'core:home' %}"><i class="ri-home-5-line" aria-hidden="true"></i> Back home</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends "staff_base.html" %}
+{% load hotel_extras %}
+{% block title %}Invoices{% endblock %}
+{% block content %}
+<div class="pms-head">
+  <div><h1>Invoices (folios)</h1><div class="sub">Outstanding balance across open folios: <b>{{ outstanding|money }}</b></div></div>
+</div>
+<form method="get" class="filter-bar">
+  <div class="field"><label>Status</label>
+    <select name="status" data-autosubmit><option value="">All</option>
+    {% for value, label in status_choices %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+</form>
+<div class="card"><div class="table-wrap"><table class="data">
+  <thead><tr><th>Invoice</th><th>Booking</th><th>Guest</th><th>Issued</th><th>Status</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th></th></tr></thead>
+  <tbody>
+  {% for inv in invoices %}
+    <tr>
+      <td class="mono"><b>{{ inv.number }}</b></td>
+      <td class="mono"><a href="{{ inv.booking.get_absolute_url }}">{{ inv.booking.code }}</a></td>
+      <td>{{ inv.booking.guest_name }}</td>
+      <td class="tiny">{{ inv.issued_at|date:"d M Y" }}</td>
+      <td><span class="badge badge-{% if inv.status == 'paid' %}success{% elif inv.status == 'open' %}warning{% elif inv.status == 'refunded' %}danger{% else %}info{% endif %}">{{ inv.get_status_display }}</span></td>
+      <td class="num">{{ inv.total|money }}</td>
+      <td class="num">{{ inv.paid_amount|money }}</td>
+      <td class="num"><b>{{ inv.balance|money }}</b></td>
+      <td class="right"><a class="btn btn-outline btn-sm" href="{% url 'finance:invoice_detail' inv.pk %}">View</a></td>
+    </tr>
+  {% empty %}<tr><td colspan="9"><div class="empty-state"><div class="ic"><i class="ri-file-text-line" aria-hidden="true"></i></div>No invoices.</div></td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% include "partials/pagination.html" %}
+{% endblock %}

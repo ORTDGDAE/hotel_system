@@ -1,0 +1,20 @@
+{% extends "staff_base.html" %}
+{% block title %}Staff directory{% endblock %}
+{% block content %}
+<div class="pms-head"><div><h1>Staff directory</h1><div class="sub">All hotel team accounts and roles</div></div></div>
+<div class="card"><div class="table-wrap"><table class="data">
+  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Home hotel</th><th>Email</th><th>Phone</th><th>Active</th></tr></thead>
+  <tbody>
+  {% for u in staff %}
+    <tr>
+      <td class="flex gap-2"><span class="avatar">{{ u.avatar_initials }}</span> {{ u.get_full_name|default:"—" }}</td>
+      <td>{{ u.username }}</td>
+      <td><span class="badge badge-gold no-dot">{{ u.get_role_display }}</span></td>
+      <td>{{ u.home_property.name|default:"Chain-wide" }}</td>
+      <td>{{ u.email }}</td><td>{{ u.phone|default:"—" }}</td>
+      <td>{% if u.is_active %}<span class="badge badge-success">Active</span>{% else %}<span class="badge badge-muted">Disabled</span>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

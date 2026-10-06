@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Sign in · {{ HOTEL_NAME }}{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <span class="auth-orb a1"></span>
+  <span class="auth-orb a2"></span>
+  <div class="auth-card">
+    <h1>Welcome back</h1>
+    <p class="muted mb-4">Sign in to manage reservations or access the front desk.</p>
+    {% if form.non_field_errors %}<div class="auth-form-error mb-3" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ form.non_field_errors.0 }}</span></div>{% endif %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="field"><label>Username</label>{{ form.username }}{% for e in form.username.errors %}<p class="errorlist" role="alert">{{ e }}</p>{% endfor %}</div>
+      <div class="field"><label>Password</label>{{ form.password }}{% for e in form.password.errors %}<p class="errorlist" role="alert">{{ e }}</p>{% endfor %}</div>
+      <div class="flex-between mb-3">
+        <label class="checkline">{{ form.remember }} Keep me signed in</label>
+      </div>
+      <button class="btn btn-gold btn-lg btn-block" type="submit">Sign in</button>
+      <input type="hidden" name="next" value="{{ request.GET.next }}">
+    </form>
+    <p class="muted small mt-4 center">New guest? <a href="{% url 'accounts:signup' %}" style="color:var(--gold);font-weight:600">Create an account</a></p>
+  </div>
+</div>
+{% endblock %}

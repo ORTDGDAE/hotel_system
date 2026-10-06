@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load hotel_extras %}
+{% block title %}{{ room_type.name }} · {{ HOTEL_NAME }}{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:40px">
+  <div class="container">
+    <a href="{% url 'hotel:room_list' %}" class="muted small"><i class="ri-arrow-left-line" aria-hidden="true"></i> All rooms & suites</a>
+    <div class="grid mt-3" style="grid-template-columns:1.6fr 1fr;gap:28px" id="detail-grid">
+      <div class="rv rv-left">
+        <div class="room-media" style="height:380px;border-radius:18px">
+          <img src="{{ room_type.image_url|default:'/static/img/room-placeholder.svg' }}" alt="{{ room_type.name }}" onerror="this.src='/static/img/room-placeholder.svg'">
+        </div>
+        <h1 class="display mt-4" style="font-size:34px">{{ room_type.name }}</h1>
+        <div class="small muted mt-2"><i class="ri-map-pin-2-line" aria-hidden="true"></i> {{ room_type.property.name }} · {{ room_type.property.city }}{% if room_type.property.maps_url %} · <a href="{{ room_type.property.maps_url }}" target="_blank" rel="noopener" style="color:#1a73e8;font-weight:650"><i class="ri-map-2-line" aria-hidden="true"></i> Open in Google Maps</a>{% endif %}</div>
+        <div class="room-meta mt-2" style="font-size:14.5px">
+          <span><i class="ri-user-3-line" aria-hidden="true"></i> up to <b>{{ room_type.max_guests }} guests</b></span>
+          <span><i class="ri-hotel-bed-line" aria-hidden="true"></i> <b>{{ room_type.get_bed_type_display }}</b></span>
+          <span><i class="ri-ruler-2-line" aria-hidden="true"></i> <b>{{ room_type.size_sqm }} m²</b></span>
+          {% if room_type.floor_range %}<span><i class="ri-building-2-line" aria-hidden="true"></i> floors <b>{{ room_type.floor_range }}</b></span>{% endif %}
+        </div>
+        <p class="mt-3" style="color:var(--ink-2);font-size:15.5px">{{ room_type.description }}</p>
+
+        <h3 class="mt-4 mb-2">Room amenities</h3>
+        <div class="amenity-chips">
+          {% for a in room_type.amenities.all %}<span class="chip" style="padding:7px 14px"><i class="{{ a.icon}}" aria-hidden="true"></i> {{ a.name }}</span>{% empty %}<span class="muted">—</span>{% endfor %}
+        </div>
+
+        <div class="card card-pad mt-4">
+          <h3 class="card-title mb-2">Nightly rate breakdown</h3>
+          {% for night in pricing.nights %}
+            <div class="rate-night"><span>{{ night.date|night_label }}</span><b>{{ night.rate|money }}</b></div>
+          {% endfor %}
+          <p class="tiny muted mt-2">Rates include seasonal & weekend pricing rules. Tax (5%) is added at checkout; no separate service charge applies.</p>
+        </div>
+      </div>
+
+      <div class="rv rv-right">
+        <div class="card card-pad summary-panel">
+          <div class="flex-between mb-3">
+            <h3 class="card-title">Your stay</h3>
+            {% if available > 0 %}<span class="badge badge-success">{{ available }} left</span>{% else %}<span class="badge badge-danger">Sold out</span>{% endif %}
+          </div>
+          <form method="get" data-datepair data-autosubmit id="dates-form">
+            <div class="form-row">
+              <div class="field"><label>Check-in</label><input type="date" name="check_in" value="{{ check_in|date:'Y-m-d' }}" onchange="this.form.submit()"></div>
+              <div class="field"><label>Check-out</label><input type="date" name="check_out" value="{{ check_out|date:'Y-m-d' }}" onchange="this.form.submit()"></div>
+            </div>
+          </form>
+          <div class="summary-line"><span>{{ pricing.night_count }} night{{ pricing.night_count|pluralize }} × {{ pricing.rooms }} room</span><b>{{ pricing.subtotal|money }}</b></div>
+          <div class="summary-line"><span>Service charge (5%)</span><b>{{ pricing.service|money }}</b></div>
+          <div class="summary-line"><span>Tax (10%)</span><b>{{ pricing.tax|money }}</b></div>
+          <div class="summary-line total"><span>Total</span><b>{{ pricing.total|money }}</b></div>
+          <div class="summary-line muted tiny" style="padding-top:0"><span>Average per night</span><span>{{ pricing.avg_nightly|money }}</span></div>
+          {% if available > 0 %}
+          <a class="btn btn-gold btn-lg btn-block mt-3" href="{% url 'bookings:book' room_type.slug %}?check_in={{ check_in|date:'Y-m-d' }}&check_out={{ check_out|date:'Y-m-d' }}&rooms=1&adults=2&children=0">Reserve this room</a>
+          {% else %}
+          <button class="btn btn-outline btn-lg btn-block mt-3" disabled>Unavailable for these dates</button>
+          {% endif %}
+          <p class="tiny muted mt-3 center">Free cancellation until {{ pricing.night_count|default:1 }} days before arrival · Best rate guaranteed</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<style>@media (max-width:980px){#detail-grid{grid-template-columns:1fr !important}}</style>
+{% include "partials/ios_dates.html" %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load hotel_extras %}
+{% block title %}Reservation {{ booking.code }} · Confirmed{% endblock %}
+{% block content %}
+<section class="section" style="padding-top:56px">
+  <div class="container" style="max-width:760px">
+    <div class="center mb-4">
+      <div class="check-ring">
+        <svg viewBox="0 0 92 92" fill="none">
+          <circle class="ring" cx="46" cy="46" r="41" stroke="#067647" stroke-width="4" stroke-linecap="round" transform="rotate(-90 46 46)"/>
+          <path class="tick" d="M30 47 L42 59 L63 36" stroke="#067647" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <script>document.body.dataset.confetti = "1";</script>
+      <h1 class="display" style="font-size:32px">Reservation confirmed</h1>
+      <p class="muted mt-1">A confirmation email has been sent to {{ booking.guest_email }}.</p>
+      <div class="badge badge-gold no-dot mt-2 code-pop" style="font-size:15px;padding:8px 18px">Confirmation code · {{ booking.code }}</div>
+    </div>
+    <div class="card card-pad">
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+        <div><div class="tiny muted">Room</div><b>{{ booking.room_type.name }} × {{ booking.rooms_count }}</b></div>
+        <div><div class="tiny muted">Check-in</div><b>{{ booking.check_in|date:"D d M Y" }}</b><div class="tiny muted">from 14:00</div></div>
+        <div><div class="tiny muted">Check-out</div><b>{{ booking.check_out|date:"D d M Y" }}</b><div class="tiny muted">by 12:00</div></div>
+        <div><div class="tiny muted">Guests</div><b>{{ booking.adults }} adult{{ booking.adults|pluralize }}{% if booking.children %}, {{ booking.children }} child{{ booking.children|pluralize }}{% endif %}</b></div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:18px 0">
+      {% if booking.discount_total %}<div class="summary-line welcome-discount-line"><span><i class="ri-coupon-3-line" aria-hidden="true"></i> Welcome offer · 10% off</span><b>−{{ booking.discount_total|money }}</b></div>{% endif %}
+      <div class="summary-line"><span>Rooms · {{ booking.nights }} night{{ booking.nights|pluralize }}</span><b>{{ booking.nightly_total|money }}</b></div>
+      {% if booking.service_total %}<div class="summary-line"><span>Service charge</span><b>{{ booking.service_total|money }}</b></div>{% endif %}
+      <div class="summary-line"><span>Tax (5%)</span><b>{{ booking.tax_total|money }}</b></div>
+      <div class="summary-line total"><span>Total</span><b>{{ booking.grand_total|money }}</b></div>
+      {% if booking.invoice %}
+        <div class="summary-line"><span>Payment status</span>
+          <span class="badge badge-{% if booking.invoice.status == 'paid' %}success{% else %}warning{% endif %}">{{ booking.invoice.get_status_display }}</span>
+        </div>
+      {% endif %}
+    </div>
+    <div class="flex gap-3 mt-4 center" style="justify-content:center">
+      <a class="btn btn-primary btn-lg" href="{% url 'core:guest_dashboard' %}">Go to My Stays</a>
+      <a class="btn btn-outline btn-lg" href="{% url 'hotel:room_list' %}">Browse more rooms</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
