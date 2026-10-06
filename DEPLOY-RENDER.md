@@ -149,7 +149,7 @@ file.
 The repository declares exactly one web service and one database; nothing in
 this change provisions additional infrastructure.
 
-
+## Render settings to paste (manual Web Service)
 
 | Field | Value |
 |---|---|
@@ -220,30 +220,85 @@ will discard anything created on Render since the last import.
 
 ## Verified locally before handing over
 
-Reproduced Render's environment exactly (Python 3.11, `DJANGO_DEBUG=0`,
-`DATABASE_SSL_REQUIRE=1`, `SEED_DEMO=0`, Gunicorn on `$PORT`):
+All of the below was run against a **fresh `git clone` of the pushed branch** in
+a clean virtualenv — not against a working copy — so it reflects exactly what
+Render will fetch.
+
+### Build and boot (Render's own commands)
 
 - `pip install -r requirements.txt` — Django 5.2.17, gunicorn 23.0.0,
-  whitenoise 6.12.0, psycopg 3.3.6, dj-database-url 2.3.0
-- `python manage.py check` — no issues
-- `python manage.py migrate` — all 34 migrations apply on a cold database
-- `python manage.py collectstatic` — 183 files, 455 post-processed
-- `sh render_start.sh` — Gunicorn boots, `/healthz/` → `200 {"status":"ok","database":true}`
-- `python manage.py test` — **41 tests, OK**
-- Cold boot with `SEED_DEMO=0` on an empty database — no crash, health check green
-- Restart with existing data and `SEED_DEMO=0` — data preserved, no re-seed
-- `/`, `/hotels/`, `/admin/`, `/static/img/logo.png` all serve correctly
+  whitenoise 6.12.0, psycopg 3.3.6 (libpq 18.6), dj-database-url 2.3.0
+- `python manage.py collectstatic --noinput` — 183 files, 455 post-processed
+- `python manage.py check --fail-level WARNING` — no issues
+- `python manage.py migrate` — all **36** migrations apply on a cold database
+- `sh render_start.sh` from the repository root — Gunicorn boots on `$PORT`
+  (confirmed the process is `gunicorn config.wsgi:application`, **not** runserver)
+- `/healthz/` → `200 {"status":"ok","database":true}`
+- `/`, `/hotels/`, `/static/img/logo.png` → 200; `/admin/` → 302 to login
+- Cold boot on an **empty** database with `SEED_DEMO=0` — no crash, health green
+- Restart with existing data and `SEED_DEMO=0` — 10 properties / 24 room types /
+  369 rooms / 170 bookings preserved, **no re-seed**
 - `ALLOWED_HOSTS` enforced (foreign `Host:` → 400)
-- `/auth/dev-login/admin/` → 404 in production mode
+- `/auth/dev-login/admin/` → **404** with `DJANGO_DEBUG=0`
 - All shell scripts confirmed **LF**, not CRLF — `.gitattributes` now pins this,
   because CRLF in `render_start.sh` breaks `sh render_start.sh` on Linux with a
   misleading "not found"
 
+### Against real PostgreSQL 16.2
+
+A local PostgreSQL 16.2 server was stood up to close the gap that SQLite testing
+leaves. Django connected through the **same `DATABASE_URL` code path Render uses**:
+
+- `migrate` — 36 migrations applied on PostgreSQL
+- `manage.py test` — **41 tests, OK** on PostgreSQL (same as SQLite)
+- The data dump imported with `-v ON_ERROR_STOP=1` — **zero errors**, landing
+  exactly on the snapshot the dump header declares: 55 users, 10 hotels,
+  369 rooms, 170 bookings, 170 invoices, 103 payments
+- Re-importing the dump a second time reproduced those same counts — **idempotent**
+- The dump's schema is a perfect match for the migrated Django schema: every
+  table and every column it writes exists, and every table it writes is in its
+  own `TRUNCATE` list
+
+### The sequence defect, demonstrated on PostgreSQL
+
+Two databases were loaded identically; only one got the companion repair.
+Then a new row was created through the Django ORM in each:
+
+| | dump only | dump + `sequences.sql` |
+|---|---|---|
+| `accounts_user_id_seq` | 1 | 56 |
+| `hotel_room_id_seq` | 1 | 1851 |
+| create a new guest signup | ❌ `IntegrityError: duplicate key value violates unique constraint "accounts_user_pkey"` | ✅ `id=57` |
+| create a new hotel | ⚠️ **silently succeeds with `id=1`** | ✅ `id=62` |
+
+That third row is the dangerous one. `hotel_property` ids in the dump start at
+52, so id 1 is free — a new hotel is created *successfully* with a wildly
+wrong id, and the collision only surfaces weeks later once the sequence climbs
+into the occupied range. Guest signups fail immediately instead.
+
+### Two gotchas worth knowing
+
+- **Never run the test suite with `DJANGO_DEBUG=0`.** It sets
+  `SECURE_SSL_REDIRECT=1`, and the test client issues plain HTTP, so 13 tests
+  fail with `301 != 200/302/404`. This is not a PostgreSQL or application bug —
+  run `manage.py test` with `DJANGO_DEBUG` unset. (The parked CI workflow does
+  this correctly.)
+- **`manage.py test` teardown can error with `database "test_…" is being
+  accessed by other users`.** `CONN_MAX_AGE=60` keeps connections open past the
+  test run, so Django cannot drop the test database. The tests themselves have
+  already passed at that point. Use `--keepdb`, or drop it manually with
+  `DROP DATABASE … WITH (FORCE)`.
+
 ### Still unverified
 
-`DATABASE_URL` parsing was validated for both of Render's URL schemes
-(`postgres://` and `postgresql://`) — both resolve to
-`django.db.backends.postgresql` with `OPTIONS={'sslmode': 'require'}` and
-correctly URL-decode special characters in the password. An **actual connection
-to Render's Postgres was not possible from here**; `/healthz/` is the probe that
-will report it, since it executes a real `SELECT 1` and returns 503 on failure.
+Only one thing: a connection to **Render's own** Postgres instance, which is not
+reachable from here. Everything up to that hop is proven — `DATABASE_URL`
+parsing for both of Render's schemes (`postgres://` and `postgresql://`), each
+resolving to `django.db.backends.postgresql` with `OPTIONS={'sslmode':'require'}`
+and correctly URL-decoding special characters in the password, plus live
+queries, migrations, the test suite and the data import against a real server.
+
+The one difference on Render is TLS: `DATABASE_SSL_REQUIRE=1` demands it, and
+Render's Postgres provides it. `/healthz/` executes a real `SELECT 1` and
+returns **503** on failure, so it will report the live connection status
+immediately after deploy.
